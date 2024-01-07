@@ -1,2 +1,4 @@
-# personal_ledger_server
-The back end server for Personal Ledger
+# Personal Ledger - Server 
+
+This git repository is for REST Server component of [Personal Ledger](https://github.com/IanTeda/personal_ledger) 
+
