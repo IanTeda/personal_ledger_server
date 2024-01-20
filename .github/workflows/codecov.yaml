@@ -1,4 +1,4 @@
-name: Codecov Rust Coverage
+name: Server Code Coverage (Codecov)
 
 on:
   push:
