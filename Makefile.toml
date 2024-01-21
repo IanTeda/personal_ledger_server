@@ -1,8 +1,9 @@
 ###############################################################################
-## CARGO MAKE FILE
+## CARGO MAKEFILE
+## Rust task runner and build tool.
+##
 ## https://github.com/sagiegurari/cargo-make
 ## $ cargo install --force cargo-make
-##
 ## ############################################################################
 
 ## https://github.com/xd009642/tarpaulin
