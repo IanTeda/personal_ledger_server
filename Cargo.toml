@@ -1,8 +1,19 @@
 [package]
-name = "server"
+name = "personal_ledger_server"
+authors = ["Ian Teda <ian@teda.id.au>"]
 version = "0.1.0"
 edition = "2021"
+description = "The backend api server for Personal Ledger"
+documentation = "https://ianteda.github.io/personal_ledger/"
+homepage = "https://ianteda.github.io/personal_ledger/"
+repository = "https://github.com/IanTeda/personal_ledger_server"
+readme = "README.md"
+license = "GPL-3.0 license"
+license-file = "LICENSE.txt"
+keywords = ["personal finance", "finance", "ledger", "money", "money tracking"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+

@@ -1,0 +1,20 @@
+###############################################################################
+## CARGO MAKE FILE
+## https://github.com/sagiegurari/cargo-make
+## ############################################################################
+
+## https://github.com/xd009642/tarpaulin
+## $ cargo make tarpaulin
+[tasks.tarpaulin]
+install_crate = "cargo-tarpaulin"
+command = "cargo"
+args = ["tarpaulin", "--ignore-tests"]
+
+## $ cargo make my_flow
+[tasks.my_flow]
+dependencies = [
+    "tarpaulin"
+    # "format",
+    # "build",
+    # "test"
+]
