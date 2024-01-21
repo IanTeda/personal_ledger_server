@@ -1,6 +1,8 @@
 ###############################################################################
 ## CARGO MAKE FILE
 ## https://github.com/sagiegurari/cargo-make
+## $ cargo install --force cargo-make
+##
 ## ############################################################################
 
 ## https://github.com/xd009642/tarpaulin
@@ -10,10 +12,18 @@ install_crate = "cargo-tarpaulin"
 command = "cargo"
 args = ["tarpaulin", "--ignore-tests"]
 
+## https://docs.rs/cargo-audit/latest/cargo_audit/index.html
+## $ cargo make audit
+[tasks.audit]
+install_crate = "cargo-audit"
+command = "cargo"
+args = ["audit"]
+
 ## $ cargo make my_flow
 [tasks.my_flow]
 dependencies = [
-    "tarpaulin"
+    "tarpaulin",
+    "audit",
     # "format",
     # "build",
     # "test"
