@@ -1,0 +1,9 @@
+// ./src/routes/mod.rs
+
+///////////////////////////////////////////////////////////////////////////////
+/// API ROUTES
+/// Set up end point routes to handler functions
+
+mod ping;
+
+pub use ping::*;

@@ -8,12 +8,24 @@ documentation = "https://ianteda.github.io/personal_ledger/"
 homepage = "https://ianteda.github.io/personal_ledger/"
 repository = "https://github.com/IanTeda/personal_ledger_server"
 readme = "README.md"
-license = "GPL-3.0 license"
 license-file = "LICENSE.txt"
 keywords = ["personal finance", "finance", "ledger", "money", "money tracking"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "personal_ledger_server"
+path = "src/main.rs"
 
 [dependencies]
+actix-web = { version = "4" }
+config = { version = "0.13", default-features = false, features = ["toml"] }
+env_logger = "0.10.1"
+log = "0.4.20"
+serde = { version="1.0.193", features = ["derive"]}
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
-
+[dev-dependencies]
+reqwest = "0.11"
+actix-rt ={ version = "2"}
