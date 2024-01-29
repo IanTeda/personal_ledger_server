@@ -7,12 +7,12 @@ use actix_web::{
 use std::net::TcpListener;
 
 pub fn run(listener: TcpListener) -> Result<Server, std::io::Error> {
-    // Initate logger
+    // Initiate logger
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let server = HttpServer::new(move || {
         App::new()
-            // Wrap env_loger
+            // Wrap env_logger
             .wrap(Logger::default())
             // Trim (normalise) trailing slashes `/`
             .wrap(middleware::NormalizePath::trim())

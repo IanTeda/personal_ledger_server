@@ -1,0 +1,115 @@
+{
+    "name": "Rust Development Container",
+
+    // Use docker-compose file
+    "dockerComposeFile": "docker-compose.yaml",
+
+    // docker-compose entry
+    "service": "development_app",
+
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+    
+    // "remoteEnv": {
+    //     "GIT_EDITOR": "code --wait"
+    // },
+
+    // Features to add to the dev container. More info: https://containers.dev/features.
+    // https://containers.dev/features
+    // "features": {
+    // },
+    
+    "mounts": [
+        // Persist cargo cache in docker volume
+        {
+            "source": "devcontainer-cargo-cache-${devcontainerId}",
+            "target": "/usr/local/cargo",
+            "type": "volume"
+        },
+        // Share host ~/.ssh folder with devcontainer
+        // "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,readonly,type=bind"
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/root/.ssh,readonly,type=bind"
+    ],
+    
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    // Only needed if requiring access outside of vscode
+    "forwardPorts": [
+        8081, // API Server port
+        // docker-compose_service_name:service_name_port
+        // Service name cannot have a underscore "_"
+        "postgres:5432",
+        "postgres:8080",
+        "swaggereditor:8080",
+        "swaggerui:8080"
+
+    ],
+    // Add label to VS Code ports in status bar
+    "portsAttributes": {
+        "8081": {
+            "label": "API"
+        },
+        "postgres:5432": {
+            "label": "Postgres Database"
+        },
+        "postgres:8080": {
+            "label": "Adminer"
+        },
+        "swaggereditor:8080": {
+            "label": "Swagger Editor"
+        },
+        "swaggerui:8080": {
+            "label": "Swagger UI"
+        }
+    },
+     
+    // Use 'postCreateCommand' to run commands after the container is created.
+    "postCreateCommand": "rustc --version", // Confirm rust is working in the container
+    
+    // Configure tool-specific properties.
+    "customizations": {
+        "vscode": {
+            "settings": {
+                // VS Code don't watch files under ./target
+                "files.watcherExclude": {
+                    "**/target/**": true
+                },
+                "rust-analyzer.checkOnSave.command": "clippy",
+                // SQL Tools Connection Setting
+                "sqltools.connections": [
+                    {
+                        "name": "Dev Container - Postgres",
+                        "driver": "PostgreSQL",
+                        "previewLimit": 50,
+                        "server": "postgres", // docker-compose service name
+                        "port": 5432,
+                        "database": "postgres",
+                        "username": "postgres",
+                        "password": "postgres"
+                    }
+                ]
+            },
+            // Add the IDs of extensions you want installed when the container is created.
+            "extensions": [
+                "gruntfuggly.todo-tree", // TODO tree
+                "jedeop.crates-completer", // cargo complete
+                "jscearcy.rust-doc-viewer", // Rust doc viewer
+                "rust-lang.rust-analyzer", // Rust language server
+                "swellaby.vscode-rust-test-adapter", // Rust test helper
+                "tamasfe.even-better-toml", // TOML file 
+                "tyriar.sort-lines", // Sort lines
+                "mtxr.sqltools", // SQL Explorer
+                "mtxr.sqltools-driver-pg", // Postgres driver
+                "arjun.swagger-viewer", // Swagger viewer
+                "42crunch.vscode-openapi", // OpenAPI (Swagger) Editor
+                "redhat.vscode-yaml", // YAML extension for OpenAPI
+                "ms-azuretools.vscode-docker", // Dockerfile
+                "mhutchie.git-graph", // Git graph
+                "streetsidesoftware.code-spell-checker", // Spell check
+                "streetsidesoftware.code-spell-checker-australian-english" // Australian english dictionary
+            ]
+        }
+    },
+    
+    // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+    // Root is needed, else cargo build complains about permissions
+    "remoteUser": "root"
+}

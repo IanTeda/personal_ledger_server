@@ -3,7 +3,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 /// PING END POINT
 /// Used by client services to confirm that api is up.
-
 use actix_web::{get, HttpResponse, Responder};
 
 #[get("")]

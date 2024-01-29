@@ -1,0 +1,66 @@
+version: '3.8'
+
+volumes:
+  postgres-data:
+    
+networks:
+  default: # this docker-compose network
+    name: rust_development_network
+    driver: bridge
+
+services:
+  development_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rust_development
+    env_file:
+      # Ensure that the variables in .env match the same variables in devcontainer.json
+      - .env
+    volumes:
+      - ../..:/workspaces:cached
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+    # Use "forwardPorts" in **devcontainer.json** to forward an app port locally. 
+    # (Adding the "ports" property to this file will not forward from a Codespace.)
+
+  # https://hub.docker.com/_/postgres/tags
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-latest}
+    container_name: postgress
+    restart: unless-stopped
+    # ports:
+      # - 5432:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    env_file:
+      # Ensure that the variables in .env match the same variables in devcontainer.json
+      - .env
+    healthcheck:
+      test: pg_isready -U postgres -h 127.0.0.1
+      interval: 5s
+
+
+  # https://github.com/swagger-api/swagger-editor
+  swaggereditor:
+    image: swaggerapi/swagger-editor:${SWAGGER_EDITOR_VERSION:-latest}
+    container_name: "swagger_editor"
+    restart: unless-stopped
+    # ports:
+    #   - "8081:8080"
+    volumes:
+      - ${SWAGGER_FILE:-../docs/api_specification.yaml}:/swagger.yaml
+    environment:
+      SWAGGER_FILE: /swagger.yaml
+
+  # https://github.com/swagger-api/swagger-ui
+  swaggerui:
+    image: swaggerapi/swagger-ui:${SWAGGER_UI_VERSION:-latest}
+    container_name: "swagger_ui"
+    restart: unless-stopped
+    # ports:
+    #   - "8082:8080"
+    volumes:
+      - ${SWAGGER_FILE:-../docs/api_specification.yaml}:/swagger.yaml
+    environment:
+      SWAGGER_JSON: /swagger.yaml
