@@ -9,7 +9,7 @@ networks:
     driver: bridge
 
 services:
-  development_app:
+  development:
     build:
       context: .
       dockerfile: Dockerfile

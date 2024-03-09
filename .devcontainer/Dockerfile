@@ -6,9 +6,4 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install clang lld \
     && apt-get autoremove -y && apt-get clean -y \
     # Use cargo-binstall to install cargo packages from binaries to speed up biuld
-    && cargo install cargo-make cargo-watch 
-    # Install cargo-make and cargo-watch in the image
-    # && cargo binstall cargo-make cargo-watch
-
-ARG USERNAME=vscode
-USER $USERNAME
+    && cargo install cargo-make cargo-watch

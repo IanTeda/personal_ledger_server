@@ -1,0 +1,4 @@
+server:
+  port: 8081
+  address: "192.168.3.8"
+  log_level: "Error"

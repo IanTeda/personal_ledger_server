@@ -5,7 +5,7 @@
     "dockerComposeFile": "docker-compose.yaml",
 
     // docker-compose entry
-    "service": "development_app",
+    "service": "development",
 
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
     
@@ -15,8 +15,9 @@
 
     // Features to add to the dev container. More info: https://containers.dev/features.
     // https://containers.dev/features
-    // "features": {
-    // },
+    "features": {
+        "ghcr.io/devcontainers-contrib/features/neovim-apt-get:1": {}
+    },
     
     "mounts": [
         // Persist cargo cache in docker volume
@@ -27,31 +28,28 @@
         },
         // Share host ~/.ssh folder with devcontainer
         // "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,readonly,type=bind"
-        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/root/.ssh,readonly,type=bind"
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/root/.ssh,readonly,type=bind",
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.config/nvim,target=/home/root/.config/nvim,readonly,type=bind"
     ],
     
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     // Only needed if requiring access outside of vscode
     "forwardPorts": [
-        8081, // API Server port
         // docker-compose_service_name:service_name_port
         // Service name cannot have a underscore "_"
+        // "development:8091", // API Server port
         "postgres:5432",
-        "postgres:8080",
         "swaggereditor:8080",
         "swaggerui:8080"
 
     ],
     // Add label to VS Code ports in status bar
     "portsAttributes": {
-        "8081": {
-            "label": "API"
-        },
+        // "development:8091": {
+        //     "label": "Server API"
+        // },
         "postgres:5432": {
             "label": "Postgres Database"
-        },
-        "postgres:8080": {
-            "label": "Adminer"
         },
         "swaggereditor:8080": {
             "label": "Swagger Editor"

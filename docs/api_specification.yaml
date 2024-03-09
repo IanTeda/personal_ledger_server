@@ -1,9 +1,9 @@
 openapi: '3.0.2'
 info:
-  title: Personal Ledger
+  title: Personal Ledger Server
   version: '1.0'
 servers:
-  - url: http://127.0.0.1:8081/api/v1
+  - url: http://127.0.0.1:8091/api/v1
 paths:
   /ping:
     get:
