@@ -13,7 +13,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: rust_development
+    container_name: api_development
     env_file:
       # Ensure that the variables in .env match the same variables in devcontainer.json
       - .env

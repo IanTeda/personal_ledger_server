@@ -11,6 +11,7 @@
         "devcontainer",
         "devcontainers",
         "gruntfuggly",
+        "ianteda",
         "jedeop",
         "jscearcy",
         "mhutchie",
@@ -27,6 +28,13 @@
         "swaggerui",
         "swellaby",
         "tamasfe",
+        "Teda",
         "tyriar"
+    ],
+    "rust-analyzer.showUnlinkedFileNotification": false,
+    "cSpell.ignoreWords": [
+        "elete",
+        "reate",
+        "pdate",
     ]
 }

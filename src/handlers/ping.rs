@@ -7,7 +7,7 @@
 //! #### REFERENCES
 //! [A guide to API health check](https://testfully.io/blog/api-health-check-monitoring/)
 
-use actix_web::{get, HttpResponse, Responder};
+use actix_web::{get, HttpResponse};
 
 /// # PING - GET (INDEX)
 /// 
@@ -15,9 +15,7 @@ use actix_web::{get, HttpResponse, Responder};
 /// 
 /// Used by client services to confirm that api is up.
 #[get("")]
-async fn index() -> impl Responder {
-    HttpResponse::Ok().body("Pong.")
-    // HttpResponse::Ok()
+pub async fn index() -> HttpResponse {
+    HttpResponse::Ok().body("Pong...")
 }
-
 

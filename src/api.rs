@@ -16,5 +16,8 @@ use crate::routes;
 /// 
 /// * `config`: is the Actix route config to build off
 pub fn v1(config: &mut web::ServiceConfig) {
-    config.service(web::scope("/ping").configure(routes::ping));
+    config
+        .service(web::scope("/ping").configure(routes::ping))
+        .service(web::scope("/things").configure(routes::things))
+        .service(web::scope("/companies").configure(routes::companies));
 }

@@ -1,12 +1,64 @@
 openapi: '3.0.2'
 info:
   title: Personal Ledger Server
+  description: This is a server for managing your personal ledgers and includes a financial, assets and investing
   version: '1.0'
+  license:
+    name: GPL-3.0 license
+    url: https://github.com/IanTeda/personal_ledger_server?tab=GPL-3.0-1-ov-file#readme
+  contact:
+    name: Ian Teda
+    url: ianteda.com
+    email: ian@teda.id.au
 servers:
-  - url: http://127.0.0.1:8091/api/v1
+  - url: http://development:{port}/{basePath}/{apiVersion}
+    description: Development Container
+    variables:      
+      port: 
+        default: '8091'
+      basePath:
+        default: 'api'
+      apiVersion:
+        default: 'v1'
 paths:
   /ping:
+    get:
+      description: Check the api is up and running
+      responses:
+        '200':
+          description: Responds with Ok
+  /things:
+    post:
+      responses:
+        '200':
+          description: OK
     get:
       responses:
         '200':
           description: OK
+    put:
+      responses:
+        '200':
+          description: OK
+    delete:
+      responses:
+        '200':
+          description: OK
+  /companies:
+    post:
+      responses:
+        '200':
+          description: Create a company
+    get:
+      responses:
+        '200':
+          description: Get an index or a company by company_id
+    put:
+      responses:
+        '200':
+          description: Update a company by company_id
+    delete:
+      responses:
+        '200':
+          description: Delete a company by company_id
+
