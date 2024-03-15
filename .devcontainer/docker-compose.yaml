@@ -5,7 +5,7 @@ volumes:
     
 networks:
   default: # this docker-compose network
-    name: rust_development_network
+    name: api_development_network
     driver: bridge
 
 services:
@@ -27,7 +27,7 @@ services:
   # https://hub.docker.com/_/postgres/tags
   postgres:
     image: postgres:${POSTGRES_VERSION:-latest}
-    container_name: postgress
+    container_name: postgres
     restart: unless-stopped
     # ports:
       # - 5432:5432
@@ -40,6 +40,18 @@ services:
       test: pg_isready -U postgres -h 127.0.0.1
       interval: 5s
 
+  # https://hub.docker.com/_/postgres/tags
+  adminer:
+    image: adminer:${ADMINER_VERSION:-latest}
+    container_name: adminer
+    restart: unless-stopped
+    # ports:
+      # - 8080:8080
+    env_file:
+      # Ensure that the variables in .env match the same variables in devcontainer.json
+      - .env
+    depends_on:
+      - postgres
 
   # https://github.com/swagger-api/swagger-editor
   swaggereditor:

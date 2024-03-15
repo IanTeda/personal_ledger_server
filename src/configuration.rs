@@ -12,6 +12,7 @@
 //! * [Configuration management in Rust web services](https://blog.logrocket.com/configuration-management-in-rust-web-services/)
 
 use serde::Deserialize;
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use strum::{AsRefStr, Display};
 
 /// # DEFAULT_CONFIG_FILE_PATH
@@ -116,20 +117,37 @@ pub struct Server {
 }
 
 #[derive(Debug, serde::Deserialize, Clone)]
-pub struct DatabaseSettings {
+pub struct Database {
+    pub host: String,
+    pub port: u16,
     pub username: String,
     pub password: String,
-    pub port: u16,
-    pub host: String,
     pub database_name: String,
+    pub require_ssl: bool,
 }
 
-impl DatabaseSettings {
-    pub fn connection_string(&self) -> String {
+impl Database {
+    pub fn connection_url(&self) -> String {
         format!(
             "postgres://{}:{}@{}:{}/{}",
             self.username, self.password, self.host, self.port, self.database_name
         )
+    }
+    pub fn without_database_name(&self) -> PgConnectOptions {
+        let ssl_mode = if self.require_ssl {
+            PgSslMode::Require
+        } else {
+            PgSslMode::Prefer
+        };
+        PgConnectOptions::new()
+            .host(&self.host)
+            .username(&self.username)
+            .password(&self.password)
+            .port(self.port)
+            .ssl_mode(ssl_mode)
+    }
+    pub fn with_database_name(&self) -> PgConnectOptions {
+        self.without_database_name().database(&self.database_name)
     }
 }
 
@@ -143,7 +161,7 @@ impl DatabaseSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub server: Server,
-    pub database: DatabaseSettings,
+    pub database: Database,
 }
 
 /// # Settings

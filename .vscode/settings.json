@@ -24,6 +24,7 @@
         "rustc",
         "serayuzgur",
         "sqltools",
+        "sqlx",
         "swaggereditor",
         "swaggerui",
         "swellaby",

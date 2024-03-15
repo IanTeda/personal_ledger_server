@@ -11,8 +11,9 @@ server:
 
 # Postgres database config
 database:
-  host: "127.0.0.1"
+  host: "postgres"
   port: 5432
   username: "postgres"
   password: "postgres"
-  database_name: "personal_ledger"
+  database_name: "personal_ledger_dev"
+  require_ssl: false

@@ -6,6 +6,7 @@
 //! 
 //! Main functions are not async so we need some magic with #[actix_web::main]
 use personal_ledger_server::{configuration, startup, telemetry};
+use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use tracing::{debug, info};
 
@@ -29,14 +30,24 @@ async fn main() -> std::io::Result<()> {
         config
     );
 
+    // TODO: Create configuration trait
     let address = format!("{}:{}", config.server.address, config.server.port);
+
+    let connection_pool = PgPoolOptions::new()
+        .connect_lazy_with(config.database.with_database_name());
+    info!("Connected to database {}", config.database.connection_url());
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("Failed to migrate the database");
+
     let listener = TcpListener::bind(address.clone())?;
 
     info!(
         "Starting API server at http://{}/api/v1 in {} environment",
         address, config.server.env
     );
-    startup::run(listener)?.await?;
+    startup::run(listener, connection_pool)?.await?;
     Ok(())
 }
 

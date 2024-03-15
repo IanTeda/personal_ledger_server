@@ -2,3 +2,10 @@ server:
   port: 8091
   address: "127.0.0.1"
   log_level: "Debug"
+
+database:
+  host: "postgres"
+  port: 5432
+  username: "postgres"
+  password: "postgres"
+  database_name: "personal_ledger_dev"

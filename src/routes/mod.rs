@@ -2,7 +2,8 @@
 //! 
 //! # API ROUTES
 //! 
-//! Set up end point routes for calling handler functions
+//! Configure methods for each api end point.
+//! Each method calls a handler
 
 // TODO: implement a `/health_check` endpoint to provide.
 mod ping;

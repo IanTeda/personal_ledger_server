@@ -11,9 +11,11 @@ info:
     url: ianteda.com
     email: ian@teda.id.au
 servers:
-  - url: http://development:{port}/{basePath}/{apiVersion}
+  - url: http://{server}:{port}/{basePath}/{apiVersion}
     description: Development Container
-    variables:      
+    variables:
+      server:
+        default: 'api_development'
       port: 
         default: '8091'
       basePath:

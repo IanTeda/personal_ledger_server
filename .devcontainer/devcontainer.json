@@ -39,6 +39,7 @@
         // Service name cannot have a underscore "_"
         // "development:8091", // API Server port
         "postgres:5432",
+        "adminer:8080",
         "swaggereditor:8080",
         "swaggerui:8080"
 
@@ -50,6 +51,9 @@
         // },
         "postgres:5432": {
             "label": "Postgres Database"
+        },
+        "adminer:8080": {
+            "label": "Adminer"
         },
         "swaggereditor:8080": {
             "label": "Swagger Editor"
@@ -79,7 +83,7 @@
                         "previewLimit": 50,
                         "server": "postgres", // docker-compose service name
                         "port": 5432,
-                        "database": "postgres",
+                        "database": "personal_ledger_dev",
                         "username": "postgres",
                         "password": "postgres"
                     }
