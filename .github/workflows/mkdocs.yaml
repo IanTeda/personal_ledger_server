@@ -1,0 +1,25 @@
+# ./github/workflows/mkdocs.yaml
+name: mkdocs
+on:
+  push:
+    branches: 
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # https://github.com/actions/checkout
+      - uses: actions/checkout@v4
+      # https://github.com/actions/setup-python
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+      # Need to install `mkdocs` and theme `mkdocs-windmill` set in `./mkdocs.yaml` config
+      - run: pip install mkdocs mkdocs-material neoteroi-mkdocs pymdown-extensions mkdocs-render-swagger-plugin
+      # Repository > Settings > Actions > General > Workflow permissions > Read and write permissions
+      - run: mkdocs gh-deploy --force --clean --verbose
+
+# Repository > Settings > Pages > Build and deployment > Branch > gh-pages
+
+## References
+# https://github.com/Neoteroi/mkdocs-plugins

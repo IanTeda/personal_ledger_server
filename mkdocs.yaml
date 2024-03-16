@@ -1,0 +1,39 @@
+site_name: Personal Ledger - Server
+site_url: https://ianteda.github.io/personal_ledger_server
+repo_url: https://github.com/IanTeda/personal_ledger_server
+docs_dir: 'docs'
+theme:
+  name: 'material'
+  palette:
+    primary: black
+    accent: indigo
+  features:
+    - navigation.path
+    - navigation.top
+    # - navigation.tabs
+    - search.suggest
+    - search.highlight
+nav:
+  - Home: README.md
+  - Getting Started: getting_started.md
+  - Database Design: database_design.md
+  - API Specification: api_specification.md
+plugins:
+  - search
+  - render_swagger:
+      allow_arbitrary_locations : true
+  - neoteroi.mkdocsoad:
+      use_pymdownx: true
+markdown_extensions:
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+extra_css:
+  - css/neoteroi-mkdocsoad.css
+extra_javascript:
+  - javascript/plausible.js
