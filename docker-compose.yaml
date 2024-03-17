@@ -1,0 +1,42 @@
+# This docker-compose file is used to test the Dockerfile biuld with a Postgres
+# container
+---
+version: '3.8'
+
+volumes:
+  postgres_data:
+    
+networks:
+  default: # this docker-compose network
+    name: personal_ledger
+    driver: bridge
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: personal_ledger_server
+    ports:
+      - 9081:8081
+    depends_on:
+      - postgres
+
+  # https://hub.docker.com/_/postgres/tags
+  postgres:
+    image: postgres:latest
+    container_name: personal_ledger_postgres
+    restart: unless-stopped
+    # ports:
+      # - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - name=value
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=personal_ledger
+      - POSTGRES_HOSTNAME=postgres
+    healthcheck:
+      test: pg_isready -U postgres -h 127.0.0.1
+      interval: 5s

@@ -13,16 +13,17 @@
 
 use serde::Deserialize;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
+use serde_aux::field_attributes::deserialize_number_from_string;
 use strum::{AsRefStr, Display};
 
 /// # DEFAULT_CONFIG_FILE_PATH
 ///
 /// Default configuration file
-const DEFAULT_CONFIG_FILE_PATH: &str = "./config/default.yaml";
+const DEFAULT_CONFIG_FILE_PATH: &str = "./configuration/default.yaml";
 /// # CONFIG_FILE_PREFIX
 ///
 /// Configuration folder to look in for runtime configurations
-const CONFIG_FILE_PREFIX: &str = "./config/";
+const CONFIG_FILE_PREFIX: &str = "./configuration/";
 
 /// # ENV
 ///
@@ -119,6 +120,7 @@ pub struct Server {
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct Database {
     pub host: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub username: String,
     pub password: String,

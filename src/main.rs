@@ -33,6 +33,7 @@ async fn main() -> std::io::Result<()> {
     // TODO: Create configuration trait
     let address = format!("{}:{}", config.server.address, config.server.port);
 
+    // TODO: do we need to reduce connection time in Docker builds
     let connection_pool = PgPoolOptions::new()
         .connect_lazy_with(config.database.with_database_name());
     info!("Connected to database {}", config.database.connection_url());

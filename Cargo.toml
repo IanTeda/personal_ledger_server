@@ -29,10 +29,24 @@ strum = { version = "0.26", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "tracing"] }
 tracing = { version = "0.1" }
 tracing-actix-web = "0.7"
-tracing-bunyan-formatter = {version = "0.3"}
-tracing-log = {version = "0.2" }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "json", "fmt"] }
-sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "macros", "postgres", "uuid", "chrono", "migrate"]}
+tracing-bunyan-formatter = { version = "0.3" }
+tracing-log = { version = "0.2" }
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+    "fmt",
+    "json",
+    "registry",
+] }
+serde-aux = {version = "4.5.0"}
+sqlx = { version = "0.7.4", features = [
+    "chrono",
+    "macros",
+    "migrate",
+    # "offline", // Now it is always enabled
+    "postgres",
+    "runtime-tokio-rustls",
+    "uuid",
+] }
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4.22", default-features = false, features = ["clock"] }
 

@@ -41,3 +41,27 @@ dependencies = [
     # "build",
     # "test"
 ]
+
+# cargo sqlx prepare -- --bin personal_ledger_server
+[tasks.sqlx_prepare]
+command = "cargo"
+args = ["sqlx", "prepare", "--", "--bin", "personal_ledger_server" ]
+
+# $ cargo make docker_image
+# docker build --network host --tag personal_ledger_server --file Dockerfile .
+[tasks.docker_image]
+command = "docker"
+args = [
+    "build", 
+    "--network", "host", 
+    "--tag", "personal_ledger_server", 
+    "--file", "Dockerfile", 
+    "."
+]
+
+## $ cargo make build
+[tasks.build]
+dependencies = [
+    "sqlx_prepare",
+    "docker_image",
+]
