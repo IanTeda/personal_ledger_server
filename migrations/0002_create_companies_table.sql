@@ -7,3 +7,8 @@ CREATE TABLE IF NOT EXISTS companies(
     website VARCHAR(50),
     logo VARCHAR(50)
 );
+
+-- Create an index's for quicker find
+-- CREATE INDEX index_name ON table_name (column_name);
+CREATE INDEX index_companies_id ON companies (id);
+CREATE INDEX index_companies_name ON companies (name);
