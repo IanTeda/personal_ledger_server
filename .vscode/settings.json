@@ -1,5 +1,9 @@
 {
     "cSpell.words": [
+        "Teda",
+    ],
+    "rust-analyzer.showUnlinkedFileNotification": false,
+    "cSpell.ignoreWords": [
         "actix",
         "Adminer",
         "arjun",
@@ -34,13 +38,11 @@
         "swaggerui",
         "swellaby",
         "tamasfe",
-        "Teda",
-        "tyriar"
-    ],
-    "rust-analyzer.showUnlinkedFileNotification": false,
-    "cSpell.ignoreWords": [
         "elete",
-        "reate",
         "pdate",
+        "reate",
+        "timestamptz",
+        "tyriar",
+        "varchar",
     ]
 }
