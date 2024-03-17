@@ -1,4 +1,4 @@
-//! ./src/telemetry.rs
+//! Setup the API log telemetry
 //!
 //! # APPLICATION TELEMETRY
 //!
@@ -32,6 +32,8 @@ use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer, Registry};
 
+/// Compose multiple subscriber layers into a `tracing` subscriber registry.
+/// 
 /// # GET TRACING SUBSCRIBER
 ///
 /// Compose multiple subscriber layers into a `tracing` subscriber registry.
@@ -86,6 +88,8 @@ where
         .with(bunyan_formatting_layer)
 }
 
+/// Register the tracing subscriber(s) to capture and process events and spans.
+/// 
 /// # INITIATE TRACING
 ///
 /// Register the tracing subscriber(s) to capture and process events and spans.

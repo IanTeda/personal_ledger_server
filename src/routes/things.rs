@@ -3,7 +3,7 @@
 //! # THINGS ROUTE
 //! 
 //! An end point route template for /api/v1/things
-//! 
+
 use actix_web::web;
 use crate::handlers;
 

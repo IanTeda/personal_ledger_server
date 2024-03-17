@@ -1,8 +1,18 @@
-# Personal Ledger - Server 
-
 This git repository is for REST Server component of [Personal Ledger](https://github.com/IanTeda/personal_ledger) 
 
-## Pull Submodule
+## Summary
+
+
+## Features
+
+
+## Usage
+
+
+## Getting Started
+
+
+### Pull Submodule
 
 Pull the latest server commits
 
@@ -43,3 +53,9 @@ and fetch data from database.
 ### 4. Services Code
 
 Services create and make the data requests from the database.
+
+#### References
+
+* [Making Great Docs with Rustdoc](https://www.tangramvision.com/blog/making-great-docs-with-rustdoc)
+* [The Rust Programming Language - Documentation](https://web.mit.edu/rust-lang_v1.25/arch/amd64_ubuntu1404/share/doc/rust/html/book/first-edition/documentation.html)
+* [Guide on how to write documentation for a Rust crate](https://blog.guillaume-gomez.fr/articles/2020-03-12+Guide+on+how+to+write+documentation+for+a+Rust+crate)

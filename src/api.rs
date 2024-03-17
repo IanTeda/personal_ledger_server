@@ -1,6 +1,6 @@
-//! ./src/api.rs
-
-//! API ROUTES
+//! Configure routes for api endpoints
+//! 
+//! # API ROUTES
 //! 
 //! API routes are abstracted into version `v1` for future breaking changes, if 
 //! needed

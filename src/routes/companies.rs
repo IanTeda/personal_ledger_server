@@ -1,3 +1,5 @@
+//! `api/v1/companies` endpoint configuration
+//! 
 //! ./src/routes/companies.rs
 //! 
 //! # COMPANIES ROUTE

@@ -1,4 +1,4 @@
-//!! ./src/startup.rs
+//! Helper function to starting the Actix server
 //!
 //! # STARTUP
 //!
@@ -12,6 +12,8 @@ use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
 
 
+/// Run the Actix server
+/// 
 /// # RUN
 ///
 /// Run the Actix Web HTTP server
