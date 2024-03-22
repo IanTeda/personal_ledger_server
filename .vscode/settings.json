@@ -4,16 +4,18 @@
     ],
     "rust-analyzer.showUnlinkedFileNotification": false,
     "cSpell.ignoreWords": [
-        "actix",
         "Adminer",
+        "Codespaces",
+        "Decrusting",
+        "actix",
         "arjun",
         "azuretools",
         "binstall",
+        "chrono",
         "clippy",
-        "Codespaces",
-        "Decrusting",
         "devcontainer",
         "devcontainers",
+        "elete",
         "gruntfuggly",
         "ianteda",
         "inlinehilite",
@@ -27,7 +29,9 @@
         "nvim",
         "openapi",
         "panicbit",
+        "pdate",
         "pymdownx",
+        "reate",
         "reqwest",
         "rustc",
         "serayuzgur",
@@ -38,11 +42,20 @@
         "swaggerui",
         "swellaby",
         "tamasfe",
-        "elete",
-        "pdate",
-        "reate",
         "timestamptz",
         "tyriar",
-        "varchar",
+        "varchar"
+    ],
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "Localhost",
+            "database": "personal_ledger_dev",
+            "username": "postgres",
+            "password": "postgres"
+        }
     ]
 }
