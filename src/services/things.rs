@@ -8,60 +8,50 @@
 //!
 //! * [Rust & MySQL: delete, insert data using crate sqlx.](https://dev.to/behainguyen/rust-mysql-delete-insert-data-using-crate-sqlx-9ii)
 //! * [A Brief Introduction about Rust SQLx](https://medium.com/@edandresvan/a-brief-introduction-about-rust-sqlx-5d3cea2e8544)
+//! * [rust_actix_sqlx_boilerplate](https://github.com/FabriceBazzaro/rust_actix_sqlx_boilerplate)
 //!
-use chrono::Utc;
-use sqlx::PgPool;
-use uuid::Uuid;
+use chrono::prelude::*;
+use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, Pool, Postgres};
 
-#[derive(serde::Deserialize)]
-pub struct ThingsData {
-    first_name: String,
-    middle_name: String,
-    last_name: String,
-    email: String,
+#[derive(Debug, Deserialize, FromRow, Serialize, Clone)]
+
+pub struct Thing {
+    pub id: uuid::Uuid,
+    pub name: String,
+    pub description: String,
+    pub created_at: Option<chrono::DateTime<Utc>>,
+    pub updated_at: Option<chrono::DateTime<Utc>>,
 }
 
-#[tracing::instrument(name = "Insert new thing into the database", skip(pool, thing))]
-pub async fn insert(pool: &PgPool, thing: &ThingsData) -> Result<(), sqlx::Error> {
-    sqlx::query!(
-        r#"
-        INSERT INTO things (id, first_name, middle_name, last_name, email, subscribed_at)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        "#,
-        Uuid::new_v4(),
-        thing.first_name,
-        thing.middle_name,
-        thing.last_name,
-        thing.email,
-        Utc::now()
-    )
-    .execute(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to execute query: {:?}", e);
-        e
-    })?;
-    Ok(())
+impl Thing {
+    pub async fn new(
+        database: &Pool<Postgres>,
+        thing: &Thing
+    ) -> Result<Thing, sqlx::Error> {
+        let statement = "INSERT INTO things (id, name, description) VALUES ($1, $2, $3) RETURNING *";
+        let query = sqlx::query_as::<_,Thing>(statement);
+        let thing = query
+            .bind(&thing.id)
+            .bind(&thing.name)
+            .bind(&thing.description)
+            .fetch_one(database)
+            .await?;
+        Ok(thing)
+    }
 }
-
-pub async fn find_by_id() {}
-
-pub async fn find() {}
-
-pub async fn update_by_id() {}
-
-pub async fn delete_by_id() {}
 
 #[cfg(test)]
 pub mod tests {
-    use sqlx::{Connection, Executor, PgConnection};
+    use sqlx::{Connection, Executor, PgConnection, PgPool};
+    use tracing::debug;
 
     use crate::configuration::{self, Database};
 
     use super::*;
 
-    pub async fn init_test_database(database_config: &Database) -> PgPool {
-        println!("Test database config used to initiate random test database: {:?}", database_config );
+    pub async fn create_test_database(database_config: &Database) -> PgPool {
+        debug!("Test database config used to initiate random test database: {:?}", database_config );
 
         // Connect to database
         let mut connection = PgConnection::connect_with(&database_config.without_database_name())
@@ -91,22 +81,55 @@ pub mod tests {
         connection_pool
     }
 
+    pub async fn drop_test_database(database_config: &Database) {
+
+        // Connect to database
+        let mut connection = PgConnection::connect_with(&database_config.without_database_name())
+            .await
+            .expect("Failed to connect to database instance...");
+
+        // Create random test database
+        connection
+            .execute(&*format!(
+                r#"DROP DATABASE IF EXISTS "{}";"#,
+                database_config.database_name
+            ))
+            .await
+            .expect("Failed to drop test database...");
+    }
+
     #[actix_rt::test]
-    async fn insert_thing() {
+    async fn thing_new_ok() {
         let mut configuration: configuration::Settings =
             configuration::Settings::new().expect("Failed to read configuration...");
-        // Assign a random database name to void test conflicts
-        configuration.database.database_name = Uuid::new_v4().to_string();
-        let connection_pool = init_test_database(&configuration.database).await;
+        // Assign a random database name to avoid test conflicts
+        configuration.database.database_name = uuid::Uuid::new_v4().to_string();
+        let random_test_database = create_test_database(&configuration.database).await;
 
-        let things_data = ThingsData {
-            first_name: "Joe".to_string(),
-            middle_name: "Johns".to_string(),
-            last_name: "Blogs".to_string(),
-            email: "joe.blogs@email.com".to_string(),
+        let thing_data = Thing {
+            id: uuid::Uuid::new_v4(),
+            name: "Marbles".to_string(),
+            description: "A round hard ball".to_string(),
+            created_at: None,
+            updated_at: None,
         };
+        debug!("thing_data is: {:?}", thing_data);
 
-        let record = insert(&connection_pool, &things_data).await;
+        let record = Thing::new(&random_test_database, &thing_data).await;
+        // debug!("record is: {:?}", record);
         assert!(record.is_ok());
+
+        let thing_record = record.unwrap();
+        debug!("thing_record is: {:?}", thing_record);
+        debug!("thing_record id is: {:?}", thing_record.id);
+        debug!("thing_data id is: {:?}", thing_data.id);
+
+        assert_eq!(thing_data.id, thing_record.id);
+        assert_eq!(thing_data.name, thing_record.name);
+        assert_eq!(thing_data.description, thing_record.description);
+        assert_ne!(thing_record.created_at, None);
+        assert_ne!(thing_record.updated_at, None);
+
+        // drop_test_database(&configuration.database).await;
     }
 }
