@@ -31,6 +31,8 @@ impl Thing {
     ) -> Result<Thing, sqlx::Error> {
         let statement = "INSERT INTO things (id, name, description) VALUES ($1, $2, $3) RETURNING *";
         let query = sqlx::query_as::<_,Thing>(statement);
+        // let query = sqlx::query_as!(Thing, statement, &thing.id, &thing.name, &thing.description);
+        // let query = sqlx::query_as!(Thing, statement)
         let thing = query
             .bind(&thing.id)
             .bind(&thing.name)
@@ -45,6 +47,8 @@ impl Thing {
 pub mod tests {
     use sqlx::{Connection, Executor, PgConnection, PgPool};
     use tracing::debug;
+    use fake::Fake;
+    use fake::faker::lorem::en::*;
 
     use crate::configuration::{self, Database};
 
@@ -56,7 +60,7 @@ pub mod tests {
         // Connect to database
         let mut connection = PgConnection::connect_with(&database_config.without_database_name())
             .await
-            .expect("Failed to connect to database instance...");
+            .expect("Failed to connect to random test database instance...");
 
         // Create random test database
         connection
@@ -95,7 +99,7 @@ pub mod tests {
                 database_config.database_name
             ))
             .await
-            .expect("Failed to drop test database...");
+            .expect("Failed to drop random test database...");
     }
 
     #[actix_rt::test]
@@ -108,8 +112,8 @@ pub mod tests {
 
         let thing_data = Thing {
             id: uuid::Uuid::new_v4(),
-            name: "Marbles".to_string(),
-            description: "A round hard ball".to_string(),
+            name: Word().fake(),
+            description:  Sentence(3..7).fake::<String>(),
             created_at: None,
             updated_at: None,
         };
