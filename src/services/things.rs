@@ -113,7 +113,7 @@ pub mod tests {
         let thing_data = Thing {
             id: uuid::Uuid::new_v4(),
             name: Word().fake(),
-            description:  Sentence(3..7).fake::<String>(),
+            description:  Sentence(3..7).fake(),
             created_at: None,
             updated_at: None,
         };
