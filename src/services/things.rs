@@ -11,51 +11,89 @@
 //! * [rust_actix_sqlx_boilerplate](https://github.com/FabriceBazzaro/rust_actix_sqlx_boilerplate)
 //!
 use chrono::prelude::*;
-use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Pool, Postgres};
+use uuid::Uuid;
 
-#[derive(Debug, Deserialize, FromRow, Serialize, Clone)]
+// ## Thing Struct
+//
+// A Thing data structure
+//
+// #### REFERENCES
+// 
+// * [Module sqlx::postgres::types](https://docs.rs/sqlx/latest/sqlx/postgres/types/index.html)
+#[derive(Debug, serde::Deserialize, sqlx::FromRow, serde::Serialize, Clone)]
 
 pub struct Thing {
-    pub id: uuid::Uuid,
+    pub id: Uuid,
     pub name: String,
-    pub description: String,
-    pub created_at: Option<chrono::DateTime<Utc>>,
-    pub updated_at: Option<chrono::DateTime<Utc>>,
+    // description needs to be in an Option<> because it can be null in database table
+    pub description: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 impl Thing {
-    pub async fn new(
-        database: &Pool<Postgres>,
-        thing: &Thing
-    ) -> Result<Thing, sqlx::Error> {
-        let statement = "INSERT INTO things (id, name, description) VALUES ($1, $2, $3) RETURNING *";
-        let query = sqlx::query_as::<_,Thing>(statement);
-        // let query = sqlx::query_as!(Thing, statement, &thing.id, &thing.name, &thing.description);
-        // let query = sqlx::query_as!(Thing, statement)
-        let thing = query
-            .bind(&thing.id)
-            .bind(&thing.name)
-            .bind(&thing.description)
-            .fetch_one(database)
-            .await?;
-        Ok(thing)
+    // Create a new thing without a description, which is optional
+    pub async fn new(name: &str) -> Self {
+        Thing {
+            id: Uuid::new_v4(),
+            name: name.to_owned(),
+            description: None,
+            created_at: Some(Utc::now()),
+            updated_at: Some(Utc::now()),
+        }
     }
+
+    // Add description to a thing
+    pub async fn add_description(&mut self, description: &str) {
+        self.description = Some(description.to_owned());
+    }
+
+    // Insert thing into database
+    pub async fn insert(new_thing: &Thing, database: &sqlx::Pool<sqlx::Postgres>) -> Result<Thing, sqlx::Error> {
+        //// Without sqlx macro type checking
+        // let statement =
+        //     r#"INSERT INTO things (name, description) VALUES ($1, $2) RETURNING *"#;
+        // let query = sqlx::query_as::<_,Thing>(statement);
+        // let thing = query
+        //     .bind(&thing.name)
+        //     .bind(&thing.description)
+        //     .fetch_one(database)
+        //     .await?;
+
+        sqlx::query_as!(
+            Thing,
+            r#"
+                INSERT INTO things (id, name, description) 
+                VALUES ($1, $2, $3) 
+                RETURNING *
+            "#,
+            new_thing.id,
+            new_thing.name,
+            new_thing.description,
+        )
+        .fetch_one(database)
+        .await
+    }
+
+    
 }
 
 #[cfg(test)]
 pub mod tests {
+    use fake::faker::lorem::en::*;
+    use fake::Fake;
     use sqlx::{Connection, Executor, PgConnection, PgPool};
     use tracing::debug;
-    use fake::Fake;
-    use fake::faker::lorem::en::*;
 
     use crate::configuration::{self, Database};
 
     use super::*;
 
     pub async fn create_test_database(database_config: &Database) -> PgPool {
-        debug!("Test database config used to initiate random test database: {:?}", database_config );
+        debug!(
+            "Test database config used to initiate random test database: {:?}",
+            database_config
+        );
 
         // Connect to database
         let mut connection = PgConnection::connect_with(&database_config.without_database_name())
@@ -86,7 +124,6 @@ pub mod tests {
     }
 
     pub async fn drop_test_database(database_config: &Database) {
-
         // Connect to database
         let mut connection = PgConnection::connect_with(&database_config.without_database_name())
             .await
@@ -102,6 +139,32 @@ pub mod tests {
             .expect("Failed to drop random test database...");
     }
 
+    // Test creating a new Thing without a description
+    #[actix_rt::test]
+    async fn new_thing(){
+        let thing_name: &str = Word().fake();
+        let test_thing = Thing::new(thing_name).await;
+
+        assert_eq!(test_thing.name, thing_name);
+        assert_eq!(test_thing.description, None);
+        assert_ne!(test_thing.created_at, None);
+        assert_ne!(test_thing.updated_at, None);
+    }
+
+    // Test creating a new Thing with description
+    #[actix_rt::test]
+    async fn new_thing_description(){
+        let thing_name: &str = Word().fake();
+        let thing_description: &str = "I am a test sentence";
+        let mut test_thing = Thing::new(thing_name).await;
+        test_thing.add_description(thing_description).await;
+
+        assert_eq!(test_thing.name, thing_name);
+        assert_eq!(test_thing.description.unwrap(), thing_description);
+        assert_ne!(test_thing.created_at, None);
+        assert_ne!(test_thing.updated_at, None);
+    }
+
     #[actix_rt::test]
     async fn thing_new_ok() {
         let mut configuration: configuration::Settings =
@@ -110,27 +173,32 @@ pub mod tests {
         configuration.database.database_name = uuid::Uuid::new_v4().to_string();
         let random_test_database = create_test_database(&configuration.database).await;
 
-        let thing_data = Thing {
+        let mut test_thing = Thing::new("Marble").await;
+        test_thing.add_description("A round hard ball").await;
+
+        println!("test_thing is {:?}", test_thing);
+
+        let test_thing_data = Thing {
             id: uuid::Uuid::new_v4(),
             name: Word().fake(),
-            description:  Sentence(3..7).fake(),
+            description: Sentence(3..7).fake(),
             created_at: None,
             updated_at: None,
         };
-        debug!("thing_data is: {:?}", thing_data);
+        debug!("thing_data is: {:?}", test_thing_data);
 
-        let record = Thing::new(&random_test_database, &thing_data).await;
+        let record = Thing::insert(&test_thing_data, &random_test_database).await;
         // debug!("record is: {:?}", record);
         assert!(record.is_ok());
 
         let thing_record = record.unwrap();
         debug!("thing_record is: {:?}", thing_record);
         debug!("thing_record id is: {:?}", thing_record.id);
-        debug!("thing_data id is: {:?}", thing_data.id);
+        debug!("thing_data id is: {:?}", test_thing_data.id);
 
-        assert_eq!(thing_data.id, thing_record.id);
-        assert_eq!(thing_data.name, thing_record.name);
-        assert_eq!(thing_data.description, thing_record.description);
+        assert_eq!(test_thing_data.id, thing_record.id);
+        assert_eq!(test_thing_data.name, thing_record.name);
+        assert_eq!(test_thing_data.description, thing_record.description);
         assert_ne!(thing_record.created_at, None);
         assert_ne!(thing_record.updated_at, None);
 
