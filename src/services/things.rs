@@ -1,81 +1,217 @@
-//! ./src/services/things.rs
+//! A template for inserting, updating, finding and deleting data in the database.
 //!
-//! # THINGS DATABASE SERVICE
+//! The thing service module is a boilerplate template for adding a new database
+//! service.
 //!
-//! A template for insert, update, find and delete data in the database
+//! The module contains a thing model struct that implements.
 //!
 //! #### REFERENCES
 //!
 //! * [Rust & MySQL: delete, insert data using crate sqlx.](https://dev.to/behainguyen/rust-mysql-delete-insert-data-using-crate-sqlx-9ii)
 //! * [A Brief Introduction about Rust SQLx](https://medium.com/@edandresvan/a-brief-introduction-about-rust-sqlx-5d3cea2e8544)
 //! * [rust_actix_sqlx_boilerplate](https://github.com/FabriceBazzaro/rust_actix_sqlx_boilerplate)
-//!
+//! * [](https://codevoweb.com/rust-build-a-crud-api-with-sqlx-and-postgresql/)
+
 use chrono::prelude::*;
+use sqlx::postgres::PgQueryResult;
 use uuid::Uuid;
 
-// ## Thing Struct
-//
-// A Thing data structure
-//
-// #### REFERENCES
-// 
-// * [Module sqlx::postgres::types](https://docs.rs/sqlx/latest/sqlx/postgres/types/index.html)
+/// A Thing model structure.
+///
+/// This struct contains the data model for Thing. The model should be consistent
+/// with the database table model. The database table models are defined in the
+/// folder `./migrations` using sql statements.
+///
+/// #### REFERENCES
+///
+/// * [Module sqlx::postgres::types](https://docs.rs/sqlx/latest/sqlx/postgres/types/index.html)
 #[derive(Debug, serde::Deserialize, sqlx::FromRow, serde::Serialize, Clone)]
-
-pub struct Thing {
+pub struct ThingModel {
+    /// The Thing `id` as a Unique identifier and cannot be null in the database.
     pub id: Uuid,
+    /// The Thing `name` is a String and cannot be null in the database.
     pub name: String,
-    // description needs to be in an Option<> because it can be null in database table
+    /// The Thing `description` is a String that can be null with the database,
+    /// so it is Optional within the struct.
     pub description: Option<String>,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
+    /// The Thing `created_at` is a time zone time stamp and cannot be null in
+    /// the database.
+    pub created_at: DateTime<Utc>,
+    /// The Thing `updated_at` is a time zone time stamp and cannot be null in
+    /// the database.
+    pub updated_at: DateTime<Utc>,
 }
 
-impl Thing {
-    // Create a new thing without a description, which is optional
+/// Implementations of the ThingModel
+///
+/// #### Reference
+///
+/// [Rust Book - Keyword impl](https://doc.rust-lang.org/std/keyword.impl.html)
+impl ThingModel {
+    /// Create a new Thing without a description, which is optional. It creates an
+    /// instance with `created_at` and `updated_at` set to now. It returns an
+    /// instance of ThingModel (Self).
+    ///
+    /// # Parameters
+    ///
+    /// * `name` - A string slice containing the name of the thing to instantiated.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use personal_ledger_server::services::things::ThingModel;
+    ///
+    /// let wiz_bang = ThingModel::new("Wiz Bang");
+    /// ```
     pub async fn new(name: &str) -> Self {
-        Thing {
+        ThingModel {
             id: Uuid::new_v4(),
             name: name.to_owned(),
             description: None,
-            created_at: Some(Utc::now()),
-            updated_at: Some(Utc::now()),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
         }
     }
 
-    // Add description to a thing
+    /// Add a description to a ThingModel instance
+    ///
+    /// # Parameters
+    ///
+    /// * `description` - A string slice that is the description of the thing to
+    /// be added to the ThingModel instance.
+    ///
+    // /// # Example
+    // ///
+    // /// ```
+    // /// use personal_ledger_server::services::things::ThingModel;
+    // ///
+    // /// let wiz_bang = ThingModel::new("Wiz Bang");
+    // /// wiz_bang.add_description = "Lots of Bang and Wiz!"
+    // /// ```
     pub async fn add_description(&mut self, description: &str) {
         self.description = Some(description.to_owned());
     }
 
-    // Insert thing into database
-    pub async fn insert(new_thing: &Thing, database: &sqlx::Pool<sqlx::Postgres>) -> Result<Thing, sqlx::Error> {
-        //// Without sqlx macro type checking
-        // let statement =
-        //     r#"INSERT INTO things (name, description) VALUES ($1, $2) RETURNING *"#;
-        // let query = sqlx::query_as::<_,Thing>(statement);
-        // let thing = query
-        //     .bind(&thing.name)
-        //     .bind(&thing.description)
-        //     .fetch_one(database)
-        //     .await?;
-
+    /// Insert a ThingModel into a database, returning a Result with the inserted
+    /// database row or an sqlx error.
+    ///
+    /// # Parameters
+    ///
+    /// * `new_thing` - An instance of the ThingModel that will be added to the
+    /// database
+    /// * `database` - An sqlx database pool that the thing will be added to.
+    pub async fn insert(
+        new_thing: &ThingModel,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<ThingModel, sqlx::Error> {
         sqlx::query_as!(
-            Thing,
+            ThingModel,
             r#"
-                INSERT INTO things (id, name, description) 
-                VALUES ($1, $2, $3) 
+                INSERT INTO things (id, name, description, created_at, updated_at) 
+                VALUES ($1, $2, $3, $4, $5) 
                 RETURNING *
             "#,
             new_thing.id,
             new_thing.name,
             new_thing.description,
+            new_thing.created_at,
+            new_thing.updated_at
         )
         .fetch_one(database)
         .await
     }
 
-    
+    /// Update thing in the database, returning a Result with either the updated
+    /// thing database row or an sqlx error.
+    ///
+    /// # Parameters
+    ///
+    /// * `updated_thing` - An updated thing instance to update in the database
+    /// * `database` - An sqlx database pool that the thing will be added to.
+    ///
+    pub async fn update(
+        updated_thing: &ThingModel,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<ThingModel, sqlx::Error> {
+        sqlx::query_as!(
+            ThingModel,
+            r#"
+                UPDATE things 
+                SET name = $2, description = $3, updated_at = $4
+                WHERE id = $1 
+                RETURNING *
+            "#,
+            updated_thing.id,
+            updated_thing.name,
+            updated_thing.description,
+            Utc::now(),
+        )
+        .fetch_one(database)
+        .await
+    }
+
+    /// Delete a database row from `things` table, returning boolean or an sqlx
+    /// error.
+    ///
+    /// # Parameters
+    ///
+    /// * `id` - The uuid of the database row to delete in the `things` database
+    /// table.
+    /// * `database` - An sqlx database pool that the thing will be deleted from.
+    pub async fn delete_by_id(
+        id: Uuid,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<PgQueryResult, sqlx::Error> {
+        sqlx::query!(
+            r#"
+                DELETE
+                FROM things
+                WHERE id = $1
+            "#,
+            id
+        )
+        .execute(database)
+        .await
+
+        // match result {
+        //     Err(e) => {
+        //         // println!("Error deleting employee: {}\n", e.to_string());
+        //         // return false;
+        //         Ok(false);
+        //     }
+
+        //     Ok(res) => {
+        //         // println!("Employee number: {} has been deleted.", emp_no);
+        //         // println!("Number of Employees deleted: {}", res.rows_affected());
+        //     }
+        // }
+
+        // true
+    }
+
+    /// Get thing row from the database table `things' by querying the thing uuid,
+    /// returning a thing instance or sqlx error.
+    /// 
+    /// # Parameters
+    /// 
+    /// * `id` - The uuid of thing to be returned
+    /// * `database` - An sqlx database pool that the thing will be searched in.
+    pub async fn get_by_id(
+        id: Uuid,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<ThingModel, sqlx::Error> {
+        sqlx::query_as!(
+            ThingModel,
+            r#"
+                SELECT * 
+                FROM things 
+                WHERE id = $1
+            "#,
+            id
+        )
+        .fetch_one(database)
+        .await
+    }
 }
 
 #[cfg(test)]
@@ -141,53 +277,42 @@ pub mod tests {
 
     // Test creating a new Thing without a description
     #[actix_rt::test]
-    async fn new_thing(){
+    async fn new_thing_instance() {
         let thing_name: &str = Word().fake();
-        let test_thing = Thing::new(thing_name).await;
+        let test_new_thing = ThingModel::new(thing_name).await;
 
-        assert_eq!(test_thing.name, thing_name);
-        assert_eq!(test_thing.description, None);
-        assert_ne!(test_thing.created_at, None);
-        assert_ne!(test_thing.updated_at, None);
+        assert_eq!(test_new_thing.name, thing_name);
+        assert_eq!(test_new_thing.description, None);
     }
 
     // Test creating a new Thing with description
     #[actix_rt::test]
-    async fn new_thing_description(){
+    async fn new_thing_instance_description() {
         let thing_name: &str = Word().fake();
         let thing_description: &str = "I am a test sentence";
-        let mut test_thing = Thing::new(thing_name).await;
+        let mut test_thing = ThingModel::new(thing_name).await;
         test_thing.add_description(thing_description).await;
 
         assert_eq!(test_thing.name, thing_name);
         assert_eq!(test_thing.description.unwrap(), thing_description);
-        assert_ne!(test_thing.created_at, None);
-        assert_ne!(test_thing.updated_at, None);
-    }
 
+    }
     #[actix_rt::test]
-    async fn thing_new_ok() {
+    async fn insert_thing_into_database() {
         let mut configuration: configuration::Settings =
             configuration::Settings::new().expect("Failed to read configuration...");
         // Assign a random database name to avoid test conflicts
         configuration.database.database_name = uuid::Uuid::new_v4().to_string();
         let random_test_database = create_test_database(&configuration.database).await;
 
-        let mut test_thing = Thing::new("Marble").await;
-        test_thing.add_description("A round hard ball").await;
+        let thing_name: &str = Word().fake();
+        let thing_description: &str = "I am a test sentence";
+        let mut test_thing_data = ThingModel::new(thing_name).await;
+        test_thing_data.add_description(thing_description).await;
 
-        println!("test_thing is {:?}", test_thing);
+        debug!("test_thing_data is: {:?}", test_thing_data);
 
-        let test_thing_data = Thing {
-            id: uuid::Uuid::new_v4(),
-            name: Word().fake(),
-            description: Sentence(3..7).fake(),
-            created_at: None,
-            updated_at: None,
-        };
-        debug!("thing_data is: {:?}", test_thing_data);
-
-        let record = Thing::insert(&test_thing_data, &random_test_database).await;
+        let record = ThingModel::insert(&test_thing_data, &random_test_database).await;
         // debug!("record is: {:?}", record);
         assert!(record.is_ok());
 
@@ -199,8 +324,8 @@ pub mod tests {
         assert_eq!(test_thing_data.id, thing_record.id);
         assert_eq!(test_thing_data.name, thing_record.name);
         assert_eq!(test_thing_data.description, thing_record.description);
-        assert_ne!(thing_record.created_at, None);
-        assert_ne!(thing_record.updated_at, None);
+        assert_eq!(thing_record.created_at, thing_record.created_at);
+        assert_eq!(thing_record.updated_at, thing_record.updated_at);
 
         // drop_test_database(&configuration.database).await;
     }

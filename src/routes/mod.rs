@@ -1,4 +1,4 @@
-//! ./src/routes/mod.rs
+//! API endpoint configuration
 //! 
 //! # API ROUTES
 //! 

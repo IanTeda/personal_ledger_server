@@ -41,25 +41,26 @@ dependencies = [
     # "build",
     # "test"
 ]
-
 ## Create Database
 # sqlx database create
 [tasks.db_create]
+install_crate = "sqlx-cli"
 command = "sqlx"
 args = ["database", "create"]
 
 ## Migrate database
 ## sqlx migrate run
 [tasks.db_migrate]
+install_crate = "sqlx-cli"
 command = "sqlx"
 args = ["migrate", "run"]
 
 [tasks.init_db]
 dependencies = ["db_create", "db_migrate"]
 
-
 # cargo sqlx prepare -- --bin personal_ledger_server
 [tasks.sqlx_prepare]
+install_crate = "sqlx-cli"
 command = "cargo"
 args = ["sqlx", "prepare", "--", "--bin", "personal_ledger_server" ]
 

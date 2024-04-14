@@ -1,4 +1,4 @@
-//! ./src/configuration.rs
+//! Import configuration from `./configuration` folder
 //!
 //! # APPLICATION CONFIGURATION
 //!

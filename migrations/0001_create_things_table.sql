@@ -1,9 +1,9 @@
 -- migrations/{timestamp}_create_things_table.sql
--- Create Subscriptions Table
-CREATE TABLE IF NOT EXISTS things(
+-- Create Things Table
+CREATE TABLE IF NOT EXISTS things (
     id UUID NOT NULL PRIMARY KEY DEFAULT (uuid_generate_v4()),
-    name VARCHAR(50) NOT NULL,
-    description VARCHAR(50),
+    name VARCHAR NOT NULL,
+    description VARCHAR,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
