@@ -26,7 +26,7 @@ use uuid::Uuid;
 ///
 /// * [Module sqlx::postgres::types](https://docs.rs/sqlx/latest/sqlx/postgres/types/index.html)
 #[derive(Debug, serde::Deserialize, sqlx::FromRow, serde::Serialize, Clone)]
-pub struct ThingModel {
+pub struct Thing {
     /// The Thing `id` as a Unique identifier and cannot be null in the database.
     pub id: Uuid,
     /// The Thing `name` is a String and cannot be null in the database.
@@ -47,7 +47,7 @@ pub struct ThingModel {
 /// #### Reference
 ///
 /// [Rust Book - Keyword impl](https://doc.rust-lang.org/std/keyword.impl.html)
-impl ThingModel {
+impl Thing {
     /// Create a new Thing without a description, which is optional. It creates an
     /// instance with `created_at` and `updated_at` set to now. It returns an
     /// instance of ThingModel (Self).
@@ -64,7 +64,7 @@ impl ThingModel {
     /// let wiz_bang = ThingModel::new("Wiz Bang");
     /// ```
     pub async fn new(name: &str) -> Self {
-        ThingModel {
+        Thing {
             id: Uuid::new_v4(),
             name: name.to_owned(),
             description: None,
@@ -100,11 +100,11 @@ impl ThingModel {
     /// database
     /// * `database` - An sqlx database pool that the thing will be added to.
     pub async fn insert(
-        new_thing: &ThingModel,
+        new_thing: &Thing,
         database: &sqlx::Pool<sqlx::Postgres>,
-    ) -> Result<ThingModel, sqlx::Error> {
+    ) -> Result<Thing, sqlx::Error> {
         sqlx::query_as!(
-            ThingModel,
+            Thing,
             r#"
                 INSERT INTO things (id, name, description, created_at, updated_at) 
                 VALUES ($1, $2, $3, $4, $5) 
@@ -128,11 +128,11 @@ impl ThingModel {
     /// * `updated_thing` - An updated thing instance to update in the database
     /// * `database` - An sqlx database pool that the thing will be added to.
     pub async fn update(
-        updated_thing: &ThingModel,
+        updated_thing: &Thing,
         database: &sqlx::Pool<sqlx::Postgres>,
-    ) -> Result<ThingModel, sqlx::Error> {
+    ) -> Result<Thing, sqlx::Error> {
         sqlx::query_as!(
-            ThingModel,
+            Thing,
             r#"
                 UPDATE things 
                 SET name = $2, description = $3, updated_at = $4
@@ -197,15 +197,39 @@ impl ThingModel {
     pub async fn get_by_id(
         id: Uuid,
         database: &sqlx::Pool<sqlx::Postgres>,
-    ) -> Result<ThingModel, sqlx::Error> {
+    ) -> Result<Thing, sqlx::Error> {
         sqlx::query_as!(
-            ThingModel,
+            Thing,
             r#"
                 SELECT * 
                 FROM things 
                 WHERE id = $1
             "#,
             id
+        )
+        .fetch_one(database)
+        .await
+    }
+
+    /// Get a row from the database table `things' by querying the thing name,
+    /// returning a thing instance or sqlx error.
+    ///
+    /// # Parameters
+    ///
+    /// * `name` - Is a String containing the thing name
+    /// * `database` - An sqlx database pool that the thing will be searched in.
+    pub async fn get_by_name(
+        name: &String,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<Thing, sqlx::Error> {
+        sqlx::query_as!(
+            Thing,
+            r#"
+                SELECT * 
+                FROM things 
+                WHERE name = $1
+            "#,
+            name
         )
         .fetch_one(database)
         .await
@@ -223,14 +247,14 @@ pub mod tests {
 
     use super::*;
 
-    async fn create_test_thing() -> ThingModel {
+    async fn create_test_thing() -> Thing {
         let thing_id: Uuid = UUIDv4.fake();
         let thing_name: String = Name().fake();
         let thing_description: Option<String> = Sentence(1..2).fake();
         let thing_created_at: DateTime<Utc> = DateTime().fake();
         let thing_updated_at: DateTime<Utc> = DateTime().fake();
 
-        ThingModel {
+        Thing {
             id: thing_id,
             name: thing_name,
             description: thing_description,
@@ -243,7 +267,7 @@ pub mod tests {
     #[actix_rt::test]
     async fn new_thing_instance() {
         let thing_name: &str = Word().fake();
-        let test_new_thing = ThingModel::new(thing_name).await;
+        let test_new_thing = Thing::new(thing_name).await;
 
         assert_eq!(test_new_thing.name, thing_name);
         assert_eq!(test_new_thing.description, None);
@@ -254,7 +278,7 @@ pub mod tests {
     async fn new_thing_instance_description() {
         let thing_name: &str = Word().fake();
         let thing_description: &str = "I am a test sentence";
-        let mut test_thing = ThingModel::new(thing_name).await;
+        let mut test_thing = Thing::new(thing_name).await;
         test_thing.add_description(thing_description).await;
 
         assert_eq!(test_thing.name, thing_name);
@@ -275,15 +299,15 @@ pub mod tests {
     ///
     /// * [Attribute Macro sqlx::test](https://docs.rs/sqlx/latest/sqlx/attr.test.html)
     #[sqlx::test]
-    async fn insert_thing_into_database(pool: Pool<Postgres>) {
-        let test_thing: ThingModel = create_test_thing().await;
+    async fn insert(pool: Pool<Postgres>) {
+        let test_thing: Thing = create_test_thing().await;
         debug!("test_thing equals: {:?}", test_thing);
 
-        let record: Result<ThingModel, sqlx::Error> = ThingModel::insert(&test_thing, &pool).await;
+        let record: Result<Thing, sqlx::Error> = Thing::insert(&test_thing, &pool).await;
 
         assert!(record.is_ok());
 
-        let thing_record: ThingModel = record.unwrap();
+        let thing_record: Thing = record.unwrap();
 
         // println!("unwrapped inserted record is {:?}", thing_record);
         debug!("thing_record is: {:?}", thing_record);
@@ -305,20 +329,20 @@ pub mod tests {
 
     /// Test updating a thing row in the database
     #[sqlx::test]
-    async fn update_thing_in_database(pool: Pool<Postgres>) {
-        let original_test_thing: ThingModel = create_test_thing().await;
+    async fn update(pool: Pool<Postgres>) {
+        let original_test_thing: Thing = create_test_thing().await;
 
-        let _ = ThingModel::insert(&original_test_thing, &pool).await;
+        let _ = Thing::insert(&original_test_thing, &pool).await;
 
-        let mut updated_test_thing: ThingModel = original_test_thing.clone();
+        let mut updated_test_thing: Thing = original_test_thing.clone();
 
         updated_test_thing.name = Name().fake();
         updated_test_thing.description = Sentence(1..2).fake();
 
-        let update_record: Result<ThingModel, sqlx::Error> =
-            ThingModel::update(&updated_test_thing, &pool).await;
+        let update_record: Result<Thing, sqlx::Error> =
+            Thing::update(&updated_test_thing, &pool).await;
 
-        let update_thing_row: ThingModel = update_record.unwrap();
+        let update_thing_row: Thing = update_record.unwrap();
 
         assert_eq!(update_thing_row.id, original_test_thing.id);
         assert_eq!(update_thing_row.name, updated_test_thing.name);
@@ -335,16 +359,16 @@ pub mod tests {
 
     /// Test deleting a thing row in the database
     #[sqlx::test]
-    async fn delete_thing_in_database(pool: Pool<Postgres>) {
-        let test_thing: ThingModel = create_test_thing().await;
+    async fn delete_by_id(pool: Pool<Postgres>) {
+        let test_thing: Thing = create_test_thing().await;
 
-        let insert_record: Result<ThingModel, sqlx::Error> = 
-            ThingModel::insert(&test_thing, &pool).await;
+        let insert_record: Result<Thing, sqlx::Error> = 
+            Thing::insert(&test_thing, &pool).await;
 
         let thing_id: Uuid = insert_record.unwrap().id;
 
         let delete_record: Result<PgQueryResult, sqlx::Error> = 
-            ThingModel::delete_by_id(thing_id, &pool).await;
+            Thing::delete_by_id(thing_id, &pool).await;
 
         println!("delete_record is {:?}", delete_record);
 
@@ -352,5 +376,53 @@ pub mod tests {
 
         // assert_eq!(update_thing_row.name, update_thing_name);
         // assert_eq!(update_thing_row.description, update_thing_description);
+    }
+
+    /// Test getting a thing row in the database by id
+    #[sqlx::test]
+    async fn get_thing_by_id(pool: Pool<Postgres>) {
+        let test_thing: Thing = create_test_thing().await;
+        let _ = Thing::insert(&test_thing, &pool).await;
+
+        let test_thing_record: Result<Thing, sqlx::Error> = 
+            Thing::get_by_id(test_thing.id, &pool).await;
+
+        let test_thing_row: Thing = test_thing_record.unwrap();
+
+        assert_eq!(test_thing_row.id, test_thing.id);
+        assert_eq!(test_thing_row.name, test_thing.name);
+        assert_eq!(test_thing_row.description, test_thing.description);
+        assert_eq!(
+            test_thing_row.created_at.timestamp_millis(),
+            test_thing.created_at.timestamp_millis()
+        );
+        assert_eq!(
+            test_thing_row.updated_at.timestamp_millis(),
+            test_thing.updated_at.timestamp_millis()
+        );
+    }
+
+    /// Test getting a thing row in the database by name
+    #[sqlx::test]
+    async fn get_thing_by_name(pool: Pool<Postgres>) {
+        let test_thing: Thing = create_test_thing().await;
+        let _ = Thing::insert(&test_thing, &pool).await;
+
+        let test_thing_record: Result<Thing, sqlx::Error> = 
+            Thing::get_by_name(&test_thing.name, &pool).await;
+
+        let test_thing_row: Thing = test_thing_record.unwrap();
+
+        assert_eq!(test_thing_row.id, test_thing.id);
+        assert_eq!(test_thing_row.name, test_thing.name);
+        assert_eq!(test_thing_row.description, test_thing.description);
+        assert_eq!(
+            test_thing_row.created_at.timestamp_millis(),
+            test_thing.created_at.timestamp_millis()
+        );
+        assert_eq!(
+            test_thing_row.updated_at.timestamp_millis(),
+            test_thing.updated_at.timestamp_millis()
+        );
     }
 }
