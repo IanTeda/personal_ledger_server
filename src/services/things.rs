@@ -81,12 +81,11 @@ impl ThingModel {
     /// be added to the ThingModel instance.
     ///
     // /// # Example
-    // ///
     // /// ```
-    // /// use personal_ledger_server::services::things::ThingModel;
+    // /// use personal_ledger_server::services::things::*;
     // ///
-    // /// let wiz_bang = ThingModel::new("Wiz Bang");
-    // /// wiz_bang.add_description = "Lots of Bang and Wiz!"
+    // /// let mut wiz_bang = ThingModel::new("Wiz Bang");
+    // /// wiz_bang.add_description("Lots of bang and wiz");
     // /// ```
     pub async fn add_description(&mut self, description: &str) {
         self.description = Some(description.to_owned());
@@ -128,7 +127,6 @@ impl ThingModel {
     ///
     /// * `updated_thing` - An updated thing instance to update in the database
     /// * `database` - An sqlx database pool that the thing will be added to.
-    ///
     pub async fn update(
         updated_thing: &ThingModel,
         database: &sqlx::Pool<sqlx::Postgres>,
@@ -191,9 +189,9 @@ impl ThingModel {
 
     /// Get thing row from the database table `things' by querying the thing uuid,
     /// returning a thing instance or sqlx error.
-    /// 
+    ///
     /// # Parameters
-    /// 
+    ///
     /// * `id` - The uuid of thing to be returned
     /// * `database` - An sqlx database pool that the thing will be searched in.
     pub async fn get_by_id(
@@ -214,65 +212,31 @@ impl ThingModel {
     }
 }
 
+// https://qxf2.com/blog/data-generation-in-rust-using-fake-crate/
 #[cfg(test)]
 pub mod tests {
-    use fake::faker::lorem::en::*;
+    use fake::faker::{chrono::en::DateTime, lorem::en::*, name::en::Name};
+    use fake::uuid::UUIDv4;
     use fake::Fake;
-    use sqlx::{Connection, Executor, PgConnection, PgPool};
+    use sqlx::{Pool, Postgres};
     use tracing::debug;
-
-    use crate::configuration::{self, Database};
 
     use super::*;
 
-    pub async fn create_test_database(database_config: &Database) -> PgPool {
-        debug!(
-            "Test database config used to initiate random test database: {:?}",
-            database_config
-        );
+    async fn create_test_thing() -> ThingModel {
+        let thing_id: Uuid = UUIDv4.fake();
+        let thing_name: String = Name().fake();
+        let thing_description: Option<String> = Sentence(1..2).fake();
+        let thing_created_at: DateTime<Utc> = DateTime().fake();
+        let thing_updated_at: DateTime<Utc> = DateTime().fake();
 
-        // Connect to database
-        let mut connection = PgConnection::connect_with(&database_config.without_database_name())
-            .await
-            .expect("Failed to connect to random test database instance...");
-
-        // Create random test database
-        connection
-            .execute(&*format!(
-                r#"CREATE DATABASE "{}";"#,
-                database_config.database_name
-            ))
-            .await
-            .expect("Failed to create random test database...");
-
-        // Connect to database pool using random test database
-        let connection_pool = sqlx::PgPool::connect_with(database_config.with_database_name())
-            .await
-            .expect("Failed to connect to random test database connection pool...");
-
-        // Apply database migrations to random test database
-        sqlx::migrate!("./migrations")
-            .run(&connection_pool)
-            .await
-            .expect("Failed to apply migrations to random test database...");
-
-        connection_pool
-    }
-
-    pub async fn drop_test_database(database_config: &Database) {
-        // Connect to database
-        let mut connection = PgConnection::connect_with(&database_config.without_database_name())
-            .await
-            .expect("Failed to connect to database instance...");
-
-        // Create random test database
-        connection
-            .execute(&*format!(
-                r#"DROP DATABASE IF EXISTS "{}";"#,
-                database_config.database_name
-            ))
-            .await
-            .expect("Failed to drop random test database...");
+        ThingModel {
+            id: thing_id,
+            name: thing_name,
+            description: thing_description,
+            created_at: thing_created_at,
+            updated_at: thing_updated_at,
+        }
     }
 
     // Test creating a new Thing without a description
@@ -295,38 +259,98 @@ pub mod tests {
 
         assert_eq!(test_thing.name, thing_name);
         assert_eq!(test_thing.description.unwrap(), thing_description);
-
     }
-    #[actix_rt::test]
-    async fn insert_thing_into_database() {
-        let mut configuration: configuration::Settings =
-            configuration::Settings::new().expect("Failed to read configuration...");
-        // Assign a random database name to avoid test conflicts
-        configuration.database.database_name = uuid::Uuid::new_v4().to_string();
-        let random_test_database = create_test_database(&configuration.database).await;
 
-        let thing_name: &str = Word().fake();
-        let thing_description: &str = "I am a test sentence";
-        let mut test_thing_data = ThingModel::new(thing_name).await;
-        test_thing_data.add_description(thing_description).await;
+    /// Test inserting a thing into the database
+    ///
+    /// `#[sqlx::test]` The test will automatically be executed in the async
+    /// runtime. For every annotated function, a new test database is created so
+    /// tests can run against a live database but are isolated from each other.
+    /// Test databases are automatically cleaned up as tests succeed, but failed
+    /// tests will leave their databases in-place to facilitate debugging.
+    ///
+    /// `pool: Pool<Postgres>` needs to be added to the test function parameters
+    ///
+    /// #### References
+    ///
+    /// * [Attribute Macro sqlx::test](https://docs.rs/sqlx/latest/sqlx/attr.test.html)
+    #[sqlx::test]
+    async fn insert_thing_into_database(pool: Pool<Postgres>) {
+        let test_thing: ThingModel = create_test_thing().await;
+        debug!("test_thing equals: {:?}", test_thing);
 
-        debug!("test_thing_data is: {:?}", test_thing_data);
+        let record: Result<ThingModel, sqlx::Error> = ThingModel::insert(&test_thing, &pool).await;
 
-        let record = ThingModel::insert(&test_thing_data, &random_test_database).await;
-        // debug!("record is: {:?}", record);
         assert!(record.is_ok());
 
-        let thing_record = record.unwrap();
+        let thing_record: ThingModel = record.unwrap();
+
+        // println!("unwrapped inserted record is {:?}", thing_record);
         debug!("thing_record is: {:?}", thing_record);
         debug!("thing_record id is: {:?}", thing_record.id);
-        debug!("thing_data id is: {:?}", test_thing_data.id);
+        debug!("thing_data id is: {:?}", thing_record.id);
 
-        assert_eq!(test_thing_data.id, thing_record.id);
-        assert_eq!(test_thing_data.name, thing_record.name);
-        assert_eq!(test_thing_data.description, thing_record.description);
-        assert_eq!(thing_record.created_at, thing_record.created_at);
-        assert_eq!(thing_record.updated_at, thing_record.updated_at);
+        assert_eq!(thing_record.id, test_thing.id);
+        assert_eq!(thing_record.name, test_thing.name);
+        assert_eq!(thing_record.description, test_thing.description);
+        assert_eq!(
+            thing_record.created_at.timestamp_millis(),
+            test_thing.created_at.timestamp_millis()
+        );
+        assert_eq!(
+            thing_record.updated_at.timestamp_millis(),
+            test_thing.updated_at.timestamp_millis()
+        );
+    }
 
-        // drop_test_database(&configuration.database).await;
+    /// Test updating a thing row in the database
+    #[sqlx::test]
+    async fn update_thing_in_database(pool: Pool<Postgres>) {
+        let original_test_thing: ThingModel = create_test_thing().await;
+
+        let _ = ThingModel::insert(&original_test_thing, &pool).await;
+
+        let mut updated_test_thing: ThingModel = original_test_thing.clone();
+
+        updated_test_thing.name = Name().fake();
+        updated_test_thing.description = Sentence(1..2).fake();
+
+        let update_record: Result<ThingModel, sqlx::Error> =
+            ThingModel::update(&updated_test_thing, &pool).await;
+
+        let update_thing_row: ThingModel = update_record.unwrap();
+
+        assert_eq!(update_thing_row.id, original_test_thing.id);
+        assert_eq!(update_thing_row.name, updated_test_thing.name);
+        assert_eq!(update_thing_row.description, updated_test_thing.description);
+        assert_eq!(
+            update_thing_row.created_at.timestamp_millis(),
+            original_test_thing.created_at.timestamp_millis()
+        );
+        assert_ne!(
+            update_thing_row.updated_at.timestamp_millis(),
+            original_test_thing.updated_at.timestamp_millis()
+        );
+    }
+
+    /// Test deleting a thing row in the database
+    #[sqlx::test]
+    async fn delete_thing_in_database(pool: Pool<Postgres>) {
+        let test_thing: ThingModel = create_test_thing().await;
+
+        let insert_record: Result<ThingModel, sqlx::Error> = 
+            ThingModel::insert(&test_thing, &pool).await;
+
+        let thing_id: Uuid = insert_record.unwrap().id;
+
+        let delete_record: Result<PgQueryResult, sqlx::Error> = 
+            ThingModel::delete_by_id(thing_id, &pool).await;
+
+        println!("delete_record is {:?}", delete_record);
+
+        println!("delete_record.unwrap() is {:?}", delete_record.unwrap());
+
+        // assert_eq!(update_thing_row.name, update_thing_name);
+        // assert_eq!(update_thing_row.description, update_thing_description);
     }
 }
