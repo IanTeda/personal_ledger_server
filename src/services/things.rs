@@ -13,7 +13,6 @@
 //! * [](https://codevoweb.com/rust-build-a-crud-api-with-sqlx-and-postgresql/)
 
 use chrono::prelude::*;
-use sqlx::postgres::PgQueryResult;
 use uuid::Uuid;
 
 /// A Thing model structure.
@@ -63,6 +62,9 @@ impl Thing {
     ///
     /// let wiz_bang = ThingModel::new("Wiz Bang");
     /// ```
+    #[tracing::instrument(
+        name = "Create a new thing instance",
+    )]
     pub async fn new(name: &str) -> Self {
         Thing {
             id: Uuid::new_v4(),
@@ -148,8 +150,8 @@ impl Thing {
         .await
     }
 
-    /// Delete a database row from `things` table, returning boolean or an sqlx
-    /// error.
+    /// Delete a database row from `things` table, returning the Result with the
+    /// number of rows deleted or an sqlx error.
     ///
     /// # Parameters
     ///
@@ -159,8 +161,8 @@ impl Thing {
     pub async fn delete_by_id(
         id: Uuid,
         database: &sqlx::Pool<sqlx::Postgres>,
-    ) -> Result<PgQueryResult, sqlx::Error> {
-        sqlx::query!(
+    ) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!(
             r#"
                 DELETE
                 FROM things
@@ -169,22 +171,9 @@ impl Thing {
             id
         )
         .execute(database)
-        .await
+        .await?;
 
-        // match result {
-        //     Err(e) => {
-        //         // println!("Error deleting employee: {}\n", e.to_string());
-        //         // return false;
-        //         Ok(false);
-        //     }
-
-        //     Ok(res) => {
-        //         // println!("Employee number: {} has been deleted.", emp_no);
-        //         // println!("Number of Employees deleted: {}", res.rows_affected());
-        //     }
-        // }
-
-        // true
+        Ok(result.rows_affected())
     }
 
     /// Get thing row from the database table `things' by querying the thing uuid,
@@ -234,6 +223,19 @@ impl Thing {
         .fetch_one(database)
         .await
     }
+
+    // pub async fn get_count(
+    //     tx: &mut crate::Transaction<'_>,
+    //     id: i64,
+    // ) -> Result<usize, DatabaseError> {
+    //     Ok(sqlx::query!(
+    //         "SELECT COUNT(id) as size FROM _tblmedia WHERE library_id = ?",
+    //         id
+    //     )
+    //     .fetch_one(&mut *tx)
+    //     .await?
+    //     .size as usize)
+    // }
 }
 
 // https://qxf2.com/blog/data-generation-in-rust-using-fake-crate/
@@ -367,15 +369,12 @@ pub mod tests {
 
         let thing_id: Uuid = insert_record.unwrap().id;
 
-        let delete_record: Result<PgQueryResult, sqlx::Error> = 
+        let delete_record: Result<u64, sqlx::Error> =
             Thing::delete_by_id(thing_id, &pool).await;
 
-        println!("delete_record is {:?}", delete_record);
+        let things_deleted: u64 = delete_record.unwrap();
 
-        println!("delete_record.unwrap() is {:?}", delete_record.unwrap());
-
-        // assert_eq!(update_thing_row.name, update_thing_name);
-        // assert_eq!(update_thing_row.description, update_thing_description);
+        assert_eq!(things_deleted, 1);
     }
 
     /// Test getting a thing row in the database by id
@@ -384,7 +383,7 @@ pub mod tests {
         let test_thing: Thing = create_test_thing().await;
         let _ = Thing::insert(&test_thing, &pool).await;
 
-        let test_thing_record: Result<Thing, sqlx::Error> = 
+        let test_thing_record: Result<Thing, sqlx::Error> =
             Thing::get_by_id(test_thing.id, &pool).await;
 
         let test_thing_row: Thing = test_thing_record.unwrap();
@@ -408,7 +407,7 @@ pub mod tests {
         let test_thing: Thing = create_test_thing().await;
         let _ = Thing::insert(&test_thing, &pool).await;
 
-        let test_thing_record: Result<Thing, sqlx::Error> = 
+        let test_thing_record: Result<Thing, sqlx::Error> =
             Thing::get_by_name(&test_thing.name, &pool).await;
 
         let test_thing_row: Thing = test_thing_record.unwrap();
