@@ -162,7 +162,7 @@ impl Thing {
         id: Uuid,
         database: &sqlx::Pool<sqlx::Postgres>,
     ) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!(
+        let result: sqlx::postgres::PgQueryResult = sqlx::query!(
             r#"
                 DELETE
                 FROM things
@@ -224,18 +224,21 @@ impl Thing {
         .await
     }
 
-    // pub async fn get_count(
-    //     tx: &mut crate::Transaction<'_>,
-    //     id: i64,
-    // ) -> Result<usize, DatabaseError> {
-    //     Ok(sqlx::query!(
-    //         "SELECT COUNT(id) as size FROM _tblmedia WHERE library_id = ?",
-    //         id
-    //     )
-    //     .fetch_one(&mut *tx)
-    //     .await?
-    //     .size as usize)
-    // }
+    pub async fn count_all(
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<i64, sqlx::Error> {
+        let count: Option<i64> = sqlx::query!(
+            r#"
+                SELECT COUNT(*)
+                FROM things
+            "#,
+        )
+        .fetch_one(database)
+        .await?
+        .count;
+
+        Ok(count.unwrap())
+    }
 }
 
 // https://qxf2.com/blog/data-generation-in-rust-using-fake-crate/
@@ -377,6 +380,24 @@ pub mod tests {
         assert_eq!(things_deleted, 1);
     }
 
+        /// Test deleting a thing row in the database
+    #[sqlx::test]
+    async fn delete_by_id_not_found(pool: Pool<Postgres>) {
+        let test_thing: Thing = create_test_thing().await;
+
+        let _: Result<Thing, sqlx::Error> = 
+            Thing::insert(&test_thing, &pool).await;
+
+        let thing_id: Uuid = UUIDv4.fake();
+
+        let delete_record: Result<u64, sqlx::Error> =
+            Thing::delete_by_id(thing_id, &pool).await;
+
+        let things_deleted: u64 = delete_record.unwrap();
+
+        assert_eq!(things_deleted, 0);
+    }
+
     /// Test getting a thing row in the database by id
     #[sqlx::test]
     async fn get_thing_by_id(pool: Pool<Postgres>) {
@@ -423,5 +444,28 @@ pub mod tests {
             test_thing_row.updated_at.timestamp_millis(),
             test_thing.updated_at.timestamp_millis()
         );
+    }
+
+    /// Test count of thing rows
+    #[sqlx::test]
+    async fn count_things(pool: Pool<Postgres>) {
+
+        let random_count: i64 = (1..20).fake::<i64>();
+
+        debug!("The count is {}", random_count);
+
+        for _count in 0..random_count {
+            let test_thing: Thing = create_test_thing().await;
+            let _ = Thing::insert(&test_thing, &pool).await;
+        }
+
+        let test_count: Result<i64, sqlx::Error> = 
+            Thing::count_all(&pool).await;
+
+        let test_count: i64 = test_count.unwrap();
+
+        debug!("The test_count is: {}", test_count);
+
+        assert_eq!(test_count, random_count);
     }
 }
