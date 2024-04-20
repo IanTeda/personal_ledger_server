@@ -362,6 +362,25 @@ pub mod tests {
         );
     }
 
+     /// Try to update a thing where uuid is not found
+    #[sqlx::test]
+    async fn update_uuid_not_found(pool: Pool<Postgres>) {
+        let original_test_thing: Thing = create_test_thing().await;
+
+        let _ = Thing::insert(&original_test_thing, &pool).await;
+
+        let mut updated_test_thing: Thing = original_test_thing.clone();
+
+        updated_test_thing.id = UUIDv4.fake();
+        updated_test_thing.name = Name().fake();
+        updated_test_thing.description = Sentence(1..2).fake();
+
+        let update_record: Result<Thing, sqlx::Error> =
+            Thing::update(&updated_test_thing, &pool).await;
+
+        println!("Error is: {:?}", update_record);
+    }
+
     /// Test deleting a thing row in the database
     #[sqlx::test]
     async fn delete_by_id(pool: Pool<Postgres>) {
