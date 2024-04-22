@@ -1,7 +1,13 @@
+use crate::prelude::*;
+
 use personal_ledger_server::{configuration, startup, telemetry};
 use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use tracing::{debug, info};
+
+mod error;
+mod prelude;
+mod utils;
 
 /// The API main entry function 
 /// 

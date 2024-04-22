@@ -11,6 +11,13 @@ readme = "README.md"
 license-file = "LICENSE.txt"
 keywords = ["personal finance", "finance", "ledger", "money", "money tracking"]
 
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused = "allow" # For experimental dev.
+
+[lints]
+workspace = true
+
 [lib]
 path = "src/lib.rs"
 
@@ -40,6 +47,7 @@ sqlx = { version = "0.7.4", features = [
     "uuid",
 ] }
 strum = { version = "0.26", features = ["derive"] }
+thiserror = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "tracing"] }
 tracing = { version = "0.1" }
 tracing-actix-web = "0.7"
