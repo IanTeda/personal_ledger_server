@@ -224,6 +224,11 @@ impl Thing {
         .await
     }
 
+    /// Get a count of all things row, returning a i64 or sqlx::Error
+    /// 
+    /// # Parameters
+    /// 
+    /// * `database` - An sqlx database pool that the thing will be searched in.
     pub async fn count_all(
         database: &sqlx::Pool<sqlx::Postgres>,
     ) -> Result<i64, sqlx::Error> {
@@ -239,6 +244,32 @@ impl Thing {
 
         Ok(count.unwrap())
     }
+
+    /// Get an index of things, returning a vector of Things
+    /// 
+    /// # Parameters
+    /// 
+    /// * `limit` - An i64 limiting the page length
+    /// * `offset` - An i64 of where the limit should start
+    /// * `database` - An sqlx database pool that the things will be searched in.
+    pub async fn index(
+        limit: i64,
+        offset: i64,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<Vec<Thing>, sqlx::Error> {
+        sqlx::query_as!(
+            Thing,
+            r#"
+                SELECT * 
+                FROM things 
+                LIMIT $1 OFFSET $2
+            "#,
+            limit,
+            offset,
+        )
+        .fetch_all(database)
+        .await
+    }
 }
 
 // https://qxf2.com/blog/data-generation-in-rust-using-fake-crate/
@@ -250,8 +281,13 @@ pub mod tests {
     use sqlx::{Pool, Postgres};
     use tracing::debug;
 
+    // TODO: Update error handling
+    // pub type Result<T> = core::result::Result<T, Error>;
+	// pub type Error = Box<dyn std::error::Error>; // For tests.
+
     use super::*;
 
+    //-- Setup and Fixtures
     async fn create_test_thing() -> Thing {
         let thing_id: Uuid = UUIDv4.fake();
         let thing_name: String = Name().fake();
@@ -271,9 +307,13 @@ pub mod tests {
     // Test creating a new Thing without a description
     #[actix_rt::test]
     async fn new_thing_instance() {
+        //-- Setup and Fixtures
         let thing_name: &str = Word().fake();
+
+        //-- Execute Function
         let test_new_thing = Thing::new(thing_name).await;
 
+        //-- Checks
         assert_eq!(test_new_thing.name, thing_name);
         assert_eq!(test_new_thing.description, None);
     }
@@ -281,11 +321,15 @@ pub mod tests {
     // Test creating a new Thing with description
     #[actix_rt::test]
     async fn new_thing_instance_description() {
+        //-- Setup and Fixtures
         let thing_name: &str = Word().fake();
-        let thing_description: &str = "I am a test sentence";
-        let mut test_thing = Thing::new(thing_name).await;
-        test_thing.add_description(thing_description).await;
+        let thing_description: String = Sentence(1..2).fake();
 
+        //-- Execute Function
+        let mut test_thing = Thing::new(thing_name).await;
+        test_thing.add_description(&thing_description).await;
+
+        //-- Checks
         assert_eq!(test_thing.name, thing_name);
         assert_eq!(test_thing.description.unwrap(), thing_description);
     }
@@ -305,15 +349,18 @@ pub mod tests {
     /// * [Attribute Macro sqlx::test](https://docs.rs/sqlx/latest/sqlx/attr.test.html)
     #[sqlx::test]
     async fn insert(pool: Pool<Postgres>) {
+        //-- Setup and Fixtures (Arrange)
         let test_thing: Thing = create_test_thing().await;
         debug!("test_thing equals: {:?}", test_thing);
 
-        let record: Result<Thing, sqlx::Error> = Thing::insert(&test_thing, &pool).await;
+        //-- Execute Function (Act)
+        let record: sqlx::Result<Thing, sqlx::Error> = Thing::insert(&test_thing, &pool).await;
 
         assert!(record.is_ok());
 
         let thing_record: Thing = record.unwrap();
 
+        //-- Checks (Assert)
         // println!("unwrapped inserted record is {:?}", thing_record);
         debug!("thing_record is: {:?}", thing_record);
         debug!("thing_record id is: {:?}", thing_record.id);
@@ -335,6 +382,7 @@ pub mod tests {
     /// Test updating a thing row in the database
     #[sqlx::test]
     async fn update(pool: Pool<Postgres>) {
+        //-- Setup and Fixtures
         let original_test_thing: Thing = create_test_thing().await;
 
         let _ = Thing::insert(&original_test_thing, &pool).await;
@@ -344,11 +392,13 @@ pub mod tests {
         updated_test_thing.name = Name().fake();
         updated_test_thing.description = Sentence(1..2).fake();
 
+        //-- Execute Function
         let update_record: Result<Thing, sqlx::Error> =
             Thing::update(&updated_test_thing, &pool).await;
 
         let update_thing_row: Thing = update_record.unwrap();
 
+        //-- Checks
         assert_eq!(update_thing_row.id, original_test_thing.id);
         assert_eq!(update_thing_row.name, updated_test_thing.name);
         assert_eq!(update_thing_row.description, updated_test_thing.description);
@@ -365,10 +415,12 @@ pub mod tests {
      /// Try to update a thing where uuid is not found
     #[sqlx::test]
     async fn update_uuid_not_found(pool: Pool<Postgres>) {
+        //-- Setup and Fixtures
         let original_test_thing: Thing = create_test_thing().await;
 
         let _ = Thing::insert(&original_test_thing, &pool).await;
 
+        //-- Execute Function
         let mut updated_test_thing: Thing = original_test_thing.clone();
 
         updated_test_thing.id = UUIDv4.fake();
@@ -378,12 +430,14 @@ pub mod tests {
         let update_record: Result<Thing, sqlx::Error> =
             Thing::update(&updated_test_thing, &pool).await;
 
+        //-- Checks
         println!("Error is: {:?}", update_record);
     }
 
     /// Test deleting a thing row in the database
     #[sqlx::test]
     async fn delete_by_id(pool: Pool<Postgres>) {
+        //-- Setup and Fixtures
         let test_thing: Thing = create_test_thing().await;
 
         let insert_record: Result<Thing, sqlx::Error> = 
@@ -391,17 +445,19 @@ pub mod tests {
 
         let thing_id: Uuid = insert_record.unwrap().id;
 
+        //-- Execute Function
         let delete_record: Result<u64, sqlx::Error> =
             Thing::delete_by_id(thing_id, &pool).await;
 
+        //-- Checks
         let things_deleted: u64 = delete_record.unwrap();
-
         assert_eq!(things_deleted, 1);
     }
 
         /// Test deleting a thing row in the database
     #[sqlx::test]
     async fn delete_by_id_not_found(pool: Pool<Postgres>) {
+        //-- Setup and Fixtures
         let test_thing: Thing = create_test_thing().await;
 
         let _: Result<Thing, sqlx::Error> = 
@@ -409,25 +465,29 @@ pub mod tests {
 
         let thing_id: Uuid = UUIDv4.fake();
 
+        //-- Execute Function
         let delete_record: Result<u64, sqlx::Error> =
             Thing::delete_by_id(thing_id, &pool).await;
 
+        //-- Checks
         let things_deleted: u64 = delete_record.unwrap();
-
         assert_eq!(things_deleted, 0);
     }
 
     /// Test getting a thing row in the database by id
     #[sqlx::test]
     async fn get_thing_by_id(pool: Pool<Postgres>) {
+        //-- Setup and Fixtures
         let test_thing: Thing = create_test_thing().await;
         let _ = Thing::insert(&test_thing, &pool).await;
 
+        //-- Execute Function
         let test_thing_record: Result<Thing, sqlx::Error> =
             Thing::get_by_id(test_thing.id, &pool).await;
 
         let test_thing_row: Thing = test_thing_record.unwrap();
 
+        //-- Checks
         assert_eq!(test_thing_row.id, test_thing.id);
         assert_eq!(test_thing_row.name, test_thing.name);
         assert_eq!(test_thing_row.description, test_thing.description);
@@ -444,14 +504,17 @@ pub mod tests {
     /// Test getting a thing row in the database by name
     #[sqlx::test]
     async fn get_thing_by_name(pool: Pool<Postgres>) {
+        //-- Setup and Fixtures
         let test_thing: Thing = create_test_thing().await;
         let _ = Thing::insert(&test_thing, &pool).await;
 
+        //-- Execute Function
         let test_thing_record: Result<Thing, sqlx::Error> =
             Thing::get_by_name(&test_thing.name, &pool).await;
 
         let test_thing_row: Thing = test_thing_record.unwrap();
 
+        //-- Checks
         assert_eq!(test_thing_row.id, test_thing.id);
         assert_eq!(test_thing_row.name, test_thing.name);
         assert_eq!(test_thing_row.description, test_thing.description);
@@ -468,7 +531,7 @@ pub mod tests {
     /// Test count of thing rows
     #[sqlx::test]
     async fn count_things(pool: Pool<Postgres>) {
-
+        //-- Setup and Fixtures
         let random_count: i64 = (1..20).fake::<i64>();
 
         debug!("The count is {}", random_count);
@@ -478,9 +541,11 @@ pub mod tests {
             let _ = Thing::insert(&test_thing, &pool).await;
         }
 
+        //-- Execute Function
         let test_count: Result<i64, sqlx::Error> = 
             Thing::count_all(&pool).await;
 
+        //-- Checks
         let test_count: i64 = test_count.unwrap();
 
         debug!("The test_count is: {}", test_count);

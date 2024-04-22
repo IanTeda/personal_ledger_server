@@ -1,6 +1,8 @@
 {
     "cSpell.words": [
+        "jeremychone",
         "Teda",
+        "thiserror"
     ],
     "rust-analyzer.showUnlinkedFileNotification": false,
     "cSpell.ignoreWords": [
