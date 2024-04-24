@@ -12,6 +12,7 @@
 //! * [rust_actix_sqlx_boilerplate](https://github.com/FabriceBazzaro/rust_actix_sqlx_boilerplate)
 //! * [](https://codevoweb.com/rust-build-a-crud-api-with-sqlx-and-postgresql/)
 
+// use crate::prelude::*;
 use chrono::prelude::*;
 use uuid::Uuid;
 
@@ -24,6 +25,7 @@ use uuid::Uuid;
 /// #### REFERENCES
 ///
 /// * [Module sqlx::postgres::types](https://docs.rs/sqlx/latest/sqlx/postgres/types/index.html)
+/// * [jeremychone-channel/rust-builder](https://github.com/jeremychone-channel/rust-builder)
 #[derive(Debug, serde::Deserialize, sqlx::FromRow, serde::Serialize, Clone)]
 pub struct Thing {
     /// The Thing `id` as a Unique identifier and cannot be null in the database.

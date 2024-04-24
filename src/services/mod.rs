@@ -4,5 +4,6 @@
 //! deleting database rows.
 
 pub mod things;
+pub mod thing_builder_consuming;
 
 // pub use things::*;

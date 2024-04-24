@@ -13,7 +13,7 @@ keywords = ["personal finance", "finance", "ledger", "money", "money tracking"]
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
-unused = "allow" # For experimental dev.
+# unused = "allow" # For experimental dev.
 
 [lints]
 workspace = true
@@ -59,7 +59,7 @@ tracing-subscriber = { version = "0.3", features = [
     "json",
     "registry",
 ] }
-uuid = { version = "1", features = ["v4", "serde"] }
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
 
 [dev-dependencies]
 actix-rt = "2"
