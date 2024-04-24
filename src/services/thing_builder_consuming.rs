@@ -65,7 +65,6 @@ impl ThingBuilder {
         );
         // println!("{uuid_timestamp:#?}");
         let id = Uuid::new_v7(uuid_timestamp);
-        // let id = Uuid::now_v7();
         // println!("{id:#?}");
         let _ = self.id.insert(id.into());
         self
