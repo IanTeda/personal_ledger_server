@@ -5,7 +5,8 @@
         "letsgetrusty",
         "nanos",
         "Teda",
-        "thiserror"
+        "thiserror",
+        "uuidv"
     ],
     "rust-analyzer.showUnlinkedFileNotification": false,
     "cSpell.ignoreWords": [

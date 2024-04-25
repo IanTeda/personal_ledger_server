@@ -1,7 +1,7 @@
 -- migrations/{timestamp}_create_things_table.sql
 -- Create Things Table
 CREATE TABLE IF NOT EXISTS things (
-    id UUID NOT NULL PRIMARY KEY DEFAULT (uuid_generate_v4()),
+    id UUID NOT NULL PRIMARY KEY DEFAULT (uuid_generate_v7()),
     name VARCHAR NOT NULL,
     description VARCHAR,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,

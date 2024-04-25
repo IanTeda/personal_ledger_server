@@ -19,6 +19,10 @@ pub struct Thing {
     updated_at: DateTime<Utc>,
 }
 
+impl Thing {
+
+}
+
 #[derive(Clone)]
 pub struct ThingBuilder {
     id: Option<Uuid>,
@@ -55,7 +59,6 @@ impl ThingBuilder {
 		self
 	}
 
-    // https://github.com/Graetdragonn/kitsune/blob/9cc036434a4a136c56ac3f097bdf47c7b9ef2cda/kitsune/src/util/mod.rs#L29
     pub fn id_set_date_time(mut self, date_time: DateTime<Utc> ) -> Self {
         // println!("{date_time:#?}");
         let uuid_timestamp: uuid::Timestamp = uuid::Timestamp::from_unix(
