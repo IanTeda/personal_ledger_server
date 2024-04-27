@@ -1,8 +1,16 @@
-//! Consuming builder pattern example.
-//! See video: https://youtu.be/Z_3WOSiYYFY
-//! [jeremychone-channel/rust-builder](https://github.com/jeremychone-channel/rust-builder/tree/main)
-//! [letsgetrusty/builder_pattern](https://github.com/letsgetrusty/builder_pattern)
-//! https://www.youtube.com/watch?v=5DWU-56mjmg
+//! A service template for inserting, updating, finding and deleting data in the 
+//! database.
+//!
+//! The module contains a Thing struct model, implementations for database actions
+//! and a builder for constructing a Thing.
+//!
+//! #### REFERENCES
+//!
+//! * [Rust & MySQL: delete, insert data using crate sqlx.](https://dev.to/behainguyen/rust-mysql-delete-insert-data-using-crate-sqlx-9ii)
+//! * [A Brief Introduction about Rust SQLx](https://medium.com/@edandresvan/a-brief-introduction-about-rust-sqlx-5d3cea2e8544)
+//! * [rust_actix_sqlx_boilerplate](https://github.com/FabriceBazzaro/rust_actix_sqlx_boilerplate)
+//! * [](https://codevoweb.com/rust-build-a-crud-api-with-sqlx-and-postgresql/)
+
 
 // #![allow(unused)] // For development only
 
@@ -10,15 +18,38 @@ use crate::prelude::*;
 use chrono::prelude::*;
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
+/// A Thing struct model.
+///
+/// This struct contains the data model for Thing. The model should be consistent
+/// with the database table model. The database table models are defined in the
+/// folder `./migrations` using sql statements.
+///
+/// #### REFERENCES
+///
+/// * [Module sqlx::postgres::types](https://docs.rs/sqlx/latest/sqlx/postgres/types/index.html)
+/// * [jeremychone-channel/rust-builder](https://github.com/jeremychone-channel/rust-builder)
+#[derive(Debug, serde::Deserialize, sqlx::FromRow, serde::Serialize, Clone)]
 pub struct Thing {
+    /// The Thing `id` as a Unique identifier (v7) and cannot be null in the database.
     id: Uuid,
+    /// The Thing `name` is a String and cannot be null in the database.
     name: String,
+    /// The Thing `description` is a String that can be null with the database,
+    /// so it is Optional within the struct.
     description: Option<String>,
+    /// The Thing `created_at` is a time zone time stamp and cannot be null in
+    /// the database.
     created_at: DateTime<Utc>,
+    /// The Thing `updated_at` is a time zone time stamp and cannot be null in
+    /// the database.
     updated_at: DateTime<Utc>,
 }
 
+/// Implementations of the ThingModel
+///
+/// #### Reference
+///
+/// [Rust Book - Keyword impl](https://doc.rust-lang.org/std/keyword.impl.html)
 impl Thing {
     /// Insert a ThingModel into a database, returning a Result with the inserted
     /// database row.
@@ -209,6 +240,9 @@ impl Thing {
     }
 }
 
+/// The ThingBuilder model struct
+/// 
+/// The struct uses option type
 #[derive(Clone)]
 pub struct ThingBuilder {
     id: Option<Uuid>,
@@ -218,7 +252,9 @@ pub struct ThingBuilder {
     updated_at: Option<DateTime<Utc>>
 }
 
-// Implementation of the default thing. You can also use the #[derive(default)]
+/// Implementation of the default Thing for creating a new thing.
+/// 
+/// You can also use the #[derive(default)]
 impl Default for ThingBuilder {
     fn default() -> Self {
         Self {
@@ -231,8 +267,14 @@ impl Default for ThingBuilder {
     }
 }
 
+// Consuming builder pattern example.
+// See video: https://youtu.be/Z_3WOSiYYFY
+// [jeremychone-channel/rust-builder](https://github.com/jeremychone-channel/rust-builder/tree/main)
+// [letsgetrusty/builder_pattern](https://github.com/letsgetrusty/builder_pattern)
+// https://www.youtube.com/watch?v=5DWU-56mjmg
 impl ThingBuilder {
 
+    /// Create a new Thing instance, based on the name and default values
     pub fn new(name: impl Into<String>) -> Self {
         ThingBuilder {
             name: Some(name.into()),
@@ -240,11 +282,13 @@ impl ThingBuilder {
         }
     }
 
+    /// Nominate the id to use
     pub fn id(mut self, id: Uuid) -> Self {
 		let _ = self.id.insert(id.into());
 		self
 	}
 
+    /// Generate Uuid with a defined DateTime<Utc>
     pub fn id_set_date_time(mut self, date_time: DateTime<Utc> ) -> Self {
         // println!("{date_time:#?}");
         let uuid_timestamp: uuid::Timestamp = uuid::Timestamp::from_unix(
@@ -253,53 +297,59 @@ impl ThingBuilder {
             date_time.timestamp_nanos_opt().unwrap() as u32,
         );
         // println!("{uuid_timestamp:#?}");
-        let id = Uuid::new_v7(uuid_timestamp);
+        let id: Uuid = Uuid::new_v7(uuid_timestamp);
         // println!("{id:#?}");
         let _ = self.id.insert(id.into());
         self
     }
 
+    /// Use a different Thing name
     pub fn name(mut self, name: impl Into<String>) -> Self {
 		let _ = self.name.insert(name.into());
 		self
 	}
 
+    /// Add a description to the ThingBuilder
     pub fn description(mut self, description: impl Into<String>) -> Self {
 		let _ = self.description.insert(description.into());
 		self
 	}
 
+    /// Specify the creation date for the ThingBuilder
     pub fn created_at(mut self, created_at: DateTime<Utc>) -> Self {
 		let _ = self.created_at.insert(created_at);
 		self
 	}
 
+    /// Specify the updated_at date for the TingBuilder
     pub fn updated_at(mut self, updated_at: DateTime<Utc>) -> Self {
 		let _ = self.updated_at.insert(updated_at);
 		self
 	}
 
+    /// Build the new Thing
     pub fn build(self) -> Result<Thing> {
-        // Run time check that `id` is not null
+        /// Run time check that `id` is not null
         let Some(id) = self.id else {
-            return Err(Error::Static("No Uuid provided")); // TODO: update with static error
+            return Err(Error::Static("No Uuid provided"));
         };
 
-        // Run time check that `name` is not null
+        /// Run time check that `name` is not null
         let Some(name) = self.name.as_ref() else {
-            return Err(Error::Static("No name provided"));  // TODO: update with static error
+            return Err(Error::Static("No name provided"));
         };
 
-        // Run time check that `created_at` is not null
+        /// Run time check that `created_at` is not null
         let Some(created_at) = self.created_at else {
-            return Err(Error::Static("No created_at date provided"));  // TODO: update with static error
+            return Err(Error::Static("No created_at date provided"));
         };
 
-        // Run time check that `created_at` is not null
+        /// Run time check that `created_at` is not null
         let Some(updated_at) = self.updated_at else {
-            return Err(Error::Static("No updated_at date provided"));  // TODO: update with static error
+            return Err(Error::Static("No updated_at date provided"));
         };
 
+        /// Return a new Thing wrapped in a result
         Ok(Thing {
             id,
             name: name.to_string(),
