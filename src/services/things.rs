@@ -59,6 +59,7 @@ impl Thing {
     /// * `new_thing` - An instance of the ThingModel that will be added to the
     /// database
     /// * `database` - An sqlx database pool that the thing will be added to.
+    #[tracing::instrument(name = "Insert Thing")]
     pub async fn insert(
         new_thing: &Thing,
         database: &sqlx::Pool<sqlx::Postgres>,
@@ -89,6 +90,7 @@ impl Thing {
     ///
     /// * `updated_thing` - An updated thing instance to update in the database
     /// * `database` - An sqlx database pool that the thing will be added to.
+     #[tracing::instrument(name = "Update Thing")]
     pub async fn update(
         updated_thing: &Thing,
         database: &sqlx::Pool<sqlx::Postgres>,
@@ -120,6 +122,7 @@ impl Thing {
     /// * `id` - The uuid of the database row to delete in the `things` database
     /// table.
     /// * `database` - An sqlx database pool that the thing will be deleted from.
+     #[tracing::instrument(name = "Delete Thing by id")]
     pub async fn delete_by_id(
         id: Uuid,
         database: &sqlx::Pool<sqlx::Postgres>,
@@ -145,7 +148,8 @@ impl Thing {
     ///
     /// * `id` - The uuid of thing to be returned
     /// * `database` - An sqlx database pool that the thing will be searched in.
-    pub async fn get_by_id(
+    #[tracing::instrument(name = "Select Thing by id")]
+    pub async fn select_by_id(
         id: Uuid,
         database: &sqlx::Pool<sqlx::Postgres>,
     ) -> Result<Thing> {
@@ -171,6 +175,7 @@ impl Thing {
     ///
     /// * `name` - Is a String containing the thing name
     /// * `database` - An sqlx database pool that the thing will be searched in.
+    #[tracing::instrument(name = "Select Thing by name")]
     pub async fn get_by_name(
         name: &String,
         database: &sqlx::Pool<sqlx::Postgres>,
@@ -195,6 +200,7 @@ impl Thing {
     /// # Parameters
     /// 
     /// * `database` - An sqlx database pool that the thing will be searched in.
+    #[tracing::instrument(name = "Count all Things")]
     pub async fn count_all(
         database: &sqlx::Pool<sqlx::Postgres>,
     ) -> Result<i64> {
@@ -218,6 +224,7 @@ impl Thing {
     /// * `limit` - An i64 limiting the page length
     /// * `offset` - An i64 of where the limit should start
     /// * `database` - An sqlx database pool that the things will be searched in.
+    #[tracing::instrument(name = "Index of Things with offset and limit")]
     pub async fn index(
         limit: i64,
         offset: i64,
@@ -599,7 +606,7 @@ pub mod tests {
 
         //-- Execute Function
         let record: Thing =
-            Thing::get_by_id(test_thing.id, &pool).await?;
+            Thing::select_by_id(test_thing.id, &pool).await?;
 
         //-- Checks
         assert_eq!(record.id, test_thing.id);
@@ -626,7 +633,7 @@ pub mod tests {
 
         //-- Execute Function
         let record: Thing =
-            Thing::get_by_id(test_thing.id, &pool).await?;
+            Thing::select_by_id(test_thing.id, &pool).await?;
 
         //-- Checks
         assert_eq!(record.id, test_thing.id);
