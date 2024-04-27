@@ -10,7 +10,7 @@ use crate::prelude::*;
 use chrono::prelude::*;
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Thing {
     id: Uuid,
     name: String,
@@ -20,7 +20,193 @@ pub struct Thing {
 }
 
 impl Thing {
+    /// Insert a ThingModel into a database, returning a Result with the inserted
+    /// database row.
+    ///
+    /// # Parameters
+    ///
+    /// * `new_thing` - An instance of the ThingModel that will be added to the
+    /// database
+    /// * `database` - An sqlx database pool that the thing will be added to.
+    pub async fn insert(
+        new_thing: &Thing,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<Thing> {
+        let record =         sqlx::query_as!(
+            Thing,
+            r#"
+                INSERT INTO things (id, name, description, created_at, updated_at) 
+                VALUES ($1, $2, $3, $4, $5) 
+                RETURNING *
+            "#,
+            new_thing.id,
+            new_thing.name,
+            new_thing.description,
+            new_thing.created_at,
+            new_thing.updated_at
+        )
+        .fetch_one(database)
+        .await?;
 
+        Ok(record)
+    }
+
+    /// Update thing in the database, returning a Result with either the updated
+    /// thing database row or an sqlx error.
+    ///
+    /// # Parameters
+    ///
+    /// * `updated_thing` - An updated thing instance to update in the database
+    /// * `database` - An sqlx database pool that the thing will be added to.
+    pub async fn update(
+        updated_thing: &Thing,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<Thing> {
+        let record = sqlx::query_as!(
+            Thing,
+            r#"
+                UPDATE things 
+                SET name = $2, description = $3, updated_at = $4
+                WHERE id = $1 
+                RETURNING *
+            "#,
+            updated_thing.id,
+            updated_thing.name,
+            updated_thing.description,
+            Utc::now(),
+        )
+        .fetch_one(database)
+        .await?;
+
+        Ok(record)
+    }
+
+    /// Delete a database row from `things` table, returning the Result with the
+    /// number of rows deleted or an sqlx error.
+    ///
+    /// # Parameters
+    ///
+    /// * `id` - The uuid of the database row to delete in the `things` database
+    /// table.
+    /// * `database` - An sqlx database pool that the thing will be deleted from.
+    pub async fn delete_by_id(
+        id: Uuid,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<u64> {
+        let result: sqlx::postgres::PgQueryResult = sqlx::query!(
+            r#"
+                DELETE
+                FROM things
+                WHERE id = $1
+            "#,
+            id
+        )
+        .execute(database)
+        .await?;
+
+        Ok(result.rows_affected())
+    }
+
+    /// Get thing row from the database table `things' by querying the thing uuid,
+    /// returning a thing instance or sqlx error.
+    ///
+    /// # Parameters
+    ///
+    /// * `id` - The uuid of thing to be returned
+    /// * `database` - An sqlx database pool that the thing will be searched in.
+    pub async fn get_by_id(
+        id: Uuid,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<Thing> {
+        let record: Thing = sqlx::query_as!(
+            Thing,
+            r#"
+                SELECT * 
+                FROM things 
+                WHERE id = $1
+            "#,
+            id
+        )
+        .fetch_one(database)
+        .await?;
+
+        Ok(record)
+    }
+
+    /// Get a row from the database table `things' by querying the thing name,
+    /// returning a thing instance or sqlx error.
+    ///
+    /// # Parameters
+    ///
+    /// * `name` - Is a String containing the thing name
+    /// * `database` - An sqlx database pool that the thing will be searched in.
+    pub async fn get_by_name(
+        name: &String,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<Thing> {
+        let record: Thing = sqlx::query_as!(
+            Thing,
+            r#"
+                SELECT * 
+                FROM things 
+                WHERE name = $1
+            "#,
+            name
+        )
+        .fetch_one(database)
+        .await?;
+
+        Ok(record)
+    }
+
+    /// Get a count of all things row, returning a i64 or sqlx::Error
+    /// 
+    /// # Parameters
+    /// 
+    /// * `database` - An sqlx database pool that the thing will be searched in.
+    pub async fn count_all(
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<i64> {
+        let count: Option<i64> = sqlx::query!(
+            r#"
+                SELECT COUNT(*)
+                FROM things
+            "#,
+        )
+        .fetch_one(database)
+        .await?
+        .count;
+
+        Ok(count.unwrap())
+    }
+
+    /// Get an index of things, returning a vector of Things
+    /// 
+    /// # Parameters
+    /// 
+    /// * `limit` - An i64 limiting the page length
+    /// * `offset` - An i64 of where the limit should start
+    /// * `database` - An sqlx database pool that the things will be searched in.
+    pub async fn index(
+        limit: i64,
+        offset: i64,
+        database: &sqlx::Pool<sqlx::Postgres>,
+    ) -> Result<Vec<Thing>> {
+        let records = sqlx::query_as!(
+            Thing,
+            r#"
+                SELECT * 
+                FROM things 
+                LIMIT $1 OFFSET $2
+            "#,
+            limit,
+            offset,
+        )
+        .fetch_all(database)
+        .await?;
+
+        Ok(records)
+    }
 }
 
 #[derive(Clone)]
@@ -127,14 +313,37 @@ impl ThingBuilder {
 #[cfg(test)]
 pub mod tests {
 
+    // Override with more flexible error
+    pub type Result<T> = core::result::Result<T, Error>;
+	pub type Error = Box<dyn std::error::Error>;
+
+    use super::*;
+
     use fake::faker::chrono::en::DateTimeAfter;
     use fake::faker::{chrono::en::DateTime, lorem::en::*};
     use fake::Fake;
+    use sqlx::{Pool, Postgres};
+    use tracing::debug;
 
-    pub type Result<T> = core::result::Result<T, Error>;
-	pub type Error = Box<dyn std::error::Error>; // For tests.
+    // Create a random Thing for testing
+    async fn create_random_test_thing() -> Result<Thing> {
+        //-- Setup random thing data
+        let thing_id: Uuid = Uuid::now_v7();
+        let thing_name: &str = Word().fake();
+        let thing_description: String = Sentence(3..7).fake();
+        let thing_created_at: DateTime<Utc> = DateTime().fake();
+        let thing_updated_at: DateTime<Utc> = DateTime().fake();
 
-    use super::*;
+        //-- Return random test
+        let random_thing: Thing = ThingBuilder::new(thing_name)
+            .id(thing_id)
+            .description(&thing_description)
+            .created_at(thing_created_at)
+            .updated_at(thing_updated_at)
+            .build()?;
+
+        Ok(random_thing)
+    }
 
     // Test creating a new Thing without a description
     #[actix_rt::test]
@@ -204,7 +413,7 @@ pub mod tests {
 
     // Test creating a new Thing with an timestamp id
     #[actix_rt::test]
-    async fn create_new_thing_with_timestamp() -> Result<()> {
+    async fn create_new_thing_with_id_timestamp() -> Result<()> {
         //-- Setup and Fixtures
         let thing_datetime: DateTime<Utc> = DateTimeAfter(chrono::DateTime::UNIX_EPOCH).fake();
         // println!("{thing_datetime:#?}");
@@ -227,6 +436,219 @@ pub mod tests {
         assert_eq!(test_new_thing.description.unwrap(), thing_description);
         assert_eq!(test_new_thing.created_at, thing_created_at);
         assert_eq!(test_new_thing.updated_at, thing_updated_at);
+
+        Ok(())
+    }
+
+    // Test inserting a thing into the database
+    //
+    // `#[sqlx::test]` The test will automatically be executed in the async
+    // runtime. For every annotated function, a new test database is created so
+    // tests can run against a live database but are isolated from each other.
+    // Test databases are automatically cleaned up as tests succeed, but failed
+    // tests will leave their databases in-place to facilitate debugging.
+    //
+    // `pool: Pool<Postgres>` needs to be added to the test function parameters
+    //
+    // #### References
+    //
+    // * [Attribute Macro sqlx::test](https://docs.rs/sqlx/latest/sqlx/attr.test.html)
+    #[sqlx::test]
+    async fn insert(pool: Pool<Postgres>) -> Result<()> {
+        //-- Setup and Fixtures (Arrange)
+        let test_thing: Thing = create_random_test_thing().await?;
+        debug!("test_thing equals: {:?}", test_thing);
+
+        //-- Execute Function (Act)
+        let record = Thing::insert(&test_thing, &pool).await?;
+
+        //-- Checks (Assert)
+        // println!("unwrapped inserted record is {:?}", thing_record);
+        debug!("thing_record is: {:?}", record);
+        debug!("thing_record id is: {:?}", record.id);
+        debug!("thing_data id is: {:?}", record.id);
+
+        assert_eq!(record.id, test_thing.id);
+        assert_eq!(record.name, test_thing.name);
+        assert_eq!(record.description, test_thing.description);
+        assert_eq!(
+            record.created_at.timestamp(),
+            test_thing.created_at.timestamp()
+        );
+        assert_eq!(
+            record.updated_at.timestamp(),
+            test_thing.updated_at.timestamp()
+        );
+
+        Ok(())
+    }
+
+    //   Test updating a thing row in the database
+    #[sqlx::test]
+    async fn update(pool: Pool<Postgres>) -> Result<()> {
+        //-- Setup and Fixtures
+        let original_test_thing: Thing = create_random_test_thing().await?;
+
+        Thing::insert(&original_test_thing, &pool).await?;
+
+        let mut updated_test_thing: Thing = original_test_thing.clone();
+
+        updated_test_thing.name = Word().fake();
+        updated_test_thing.description = Sentence(1..2).fake();
+
+        //-- Execute Function
+        let update_record: Thing =
+            Thing::update(&updated_test_thing, &pool).await?;
+
+        //-- Checks
+        assert_eq!(update_record.id, original_test_thing.id);
+        assert_eq!(update_record.name, updated_test_thing.name);
+        assert_eq!(update_record.description, updated_test_thing.description);
+        assert_eq!(
+            update_record.created_at.timestamp_millis(),
+            original_test_thing.created_at.timestamp_millis()
+        );
+        assert_ne!(
+            update_record.updated_at.timestamp_millis(),
+            original_test_thing.updated_at.timestamp_millis()
+        );
+
+        Ok(())
+    }
+
+    // Test deleting a thing row in the database
+    #[sqlx::test]
+    async fn delete_by_id(pool: Pool<Postgres>) -> Result<()> {
+        //-- Setup and Fixtures
+        let test_thing: Thing = create_random_test_thing().await?;
+        let record: Thing = Thing::insert(&test_thing, &pool).await?;
+
+        //-- Execute Function
+        let rows_deleted: u64 =
+            Thing::delete_by_id(record.id, &pool).await?;
+
+        //-- Checks
+        assert_eq!(rows_deleted, 1);
+
+        Ok(())
+    }
+
+    // Test getting a thing row in the database by id
+    #[sqlx::test]
+    async fn get_thing_by_id(pool: Pool<Postgres>) -> Result<()> {
+        //-- Setup and Fixtures
+        let test_thing: Thing = create_random_test_thing().await?;
+        Thing::insert(&test_thing, &pool).await?;
+
+        //-- Execute Function
+        let record: Thing =
+            Thing::get_by_id(test_thing.id, &pool).await?;
+
+        //-- Checks
+        assert_eq!(record.id, test_thing.id);
+        assert_eq!(record.name, test_thing.name);
+        assert_eq!(record.description, test_thing.description);
+        assert_eq!(
+            record.created_at.timestamp(),
+            test_thing.created_at.timestamp()
+        );
+        assert_eq!(
+            record.updated_at.timestamp(),
+            test_thing.updated_at.timestamp()
+        );
+
+        Ok(())
+    }
+
+    // Test getting a thing row in the database by name
+    #[sqlx::test]
+    async fn get_thing_by_name(pool: Pool<Postgres>) -> Result<()> {
+        //-- Setup and Fixtures
+        let test_thing: Thing = create_random_test_thing().await?;
+        Thing::insert(&test_thing, &pool).await?;
+
+        //-- Execute Function
+        let record: Thing =
+            Thing::get_by_id(test_thing.id, &pool).await?;
+
+        //-- Checks
+        assert_eq!(record.id, test_thing.id);
+        assert_eq!(record.name, test_thing.name);
+        assert_eq!(record.description, test_thing.description);
+        assert_eq!(
+            record.created_at.timestamp_millis(),
+            record.created_at.timestamp_millis()
+        );
+        assert_eq!(
+            record.updated_at.timestamp_millis(),
+            record.updated_at.timestamp_millis()
+        );
+
+        Ok(())
+    }
+
+    // Test count of thing rows
+    #[sqlx::test]
+    async fn count_things(pool: Pool<Postgres>) -> Result<()> {
+        //-- Setup and Fixtures
+        let random_count: i64 = (1..20).fake::<i64>();
+
+        debug!("The count is {}", random_count);
+
+        for _count in 0..random_count {
+        let test_thing: Thing = create_random_test_thing().await?;
+        Thing::insert(&test_thing, &pool).await?;
+        }
+
+        //-- Execute Function
+        let test_count = 
+            Thing::count_all(&pool).await?;
+
+        //-- Checks
+        debug!("The test_count is: {}", test_count);
+        assert_eq!(test_count, random_count);
+
+        Ok(())
+    }
+
+    // Test thing query
+    #[sqlx::test]
+    async fn index(pool: Pool<Postgres>) -> Result<()> {
+        //-- Setup and Fixtures
+        let random_count: i64 = (10..30).fake::<i64>();
+        let mut test_vec: Vec<Thing> = Vec::new();
+        for _count in 0..random_count {
+            let test_thing: Thing = create_random_test_thing().await?;
+            test_vec.push(Thing::insert(&test_thing, &pool).await?);
+        }
+
+        //-- Execute Function
+        let random_limit: i64 = (1..random_count).fake::<i64>();
+        let random_offset: i64 = (1..random_count).fake::<i64>();
+        let records: Vec<Thing> = 
+            Thing::index(random_limit, random_offset, &pool).await?;
+
+        //-- Checks
+        let count_less_offset: i64 = random_count - random_offset;
+        let expected_records: i64;
+
+        if count_less_offset <  random_limit {
+            expected_records = count_less_offset
+        } else {
+            expected_records = random_limit
+        }
+
+        let random_vec_index: i64 = (1..expected_records).fake::<i64>() - 1;
+        let random_test_vec_index = random_offset + random_vec_index;
+        let random_record_thing = &records[random_vec_index as usize];
+        let random_test_thing = &test_vec[random_test_vec_index as usize];
+
+        // println!("{random_record_thing:?}");
+        // println!("{random_test_thing:?}");
+
+        assert_eq!(records.len() as i64, expected_records);
+        assert_eq!(random_record_thing.id, random_test_thing.id);
+
 
         Ok(())
     }

@@ -32,6 +32,7 @@ chrono = { version = "0.4.22", default-features = false, features = [
     "serde",
 ] }
 config = { version = "0.14.0", default-features = false, features = ["yaml"] }
+derive_more = { version = "1.0.0-beta", features = ["from"] }
 env_logger = "0.11.1"
 futures = "0.3.29"
 log = "0.4.20"
