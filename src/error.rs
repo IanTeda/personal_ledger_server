@@ -1,3 +1,6 @@
+//! Main error crate
+//! 
+//! Module (folder) error crates are imported throughs
 
 /// Error static type enums
 /// 
@@ -10,10 +13,8 @@
 /// * [Rust Error Types Explained: Building Robust Error Handling](https://marketsplash.com/rust-error-types/)
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+	//--
 
-	#[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
-	
 	/// For starter, to remove as code matures.
 	#[error("Generic error: {0}")]
 	Generic(String),
@@ -22,6 +23,14 @@ pub enum Error {
 	#[error("Static error: {0}")]
 	Static(&'static str),
 
+	// -- Module Error Crates
+	// #[error(transparent)]
+	// Services(#[from] crate::personal_ledger_server::services::error::Error),
+
+	// -- Externals
 	#[error(transparent)]
 	IO(#[from] std::io::Error),
+
+	#[error("Database error: {0}")]
+    Database(#[from] sqlx::Error),
 }

@@ -5,6 +5,7 @@ use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use tracing::{debug, info};
 
+//-- Re-export modules
 mod error;
 mod prelude;
 mod utils;
@@ -13,7 +14,7 @@ mod utils;
 /// 
 /// Main functions are not async so we need some magic with `#[actix_web::main]``
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<()> {
     // Load configuration file
     let config: configuration::Settings =
         configuration::Settings::new().expect("Failed to read configuration.");

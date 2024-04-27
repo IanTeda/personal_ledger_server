@@ -1,12 +1,13 @@
+// Override with more flexible error
+pub type Result<T> = core::result::Result<T, Error>;
+pub type Error = Box<dyn std::error::Error>;
+
 use once_cell::sync::Lazy;
 use personal_ledger_server::{
-    configuration::{self, Database},
     startup, telemetry,
 };
-use sqlx::{Connection, Executor, PgConnection, PgPool};
-use tracing::debug;
+use sqlx::{PgPool, Pool, Postgres};
 use std::net::TcpListener;
-use uuid::Uuid;
 
 // Ensure that the `tracing` stack is only initialised once using `once_cell`
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -36,36 +37,37 @@ pub struct TestApp {
     pub database_pool: PgPool,
 }
 
+// TODO: Consider deleting as #[sqlx::test] macro does this for us, including deleting test database
 // Initialise database for each test
-pub async fn init_test_database(database_config: &Database) -> PgPool {
-    debug!("Test database config used to initiate random test database: {:?}", database_config );
+// pub async fn init_test_database(database_config: &Database) -> PgPool {
+//     debug!("Test database config used to initiate random test database: {:?}", database_config );
 
-    // Connect to database
-    let mut connection = PgConnection::connect_with(&database_config.without_database_name())
-        .await
-        .expect("Failed to connect to database instance...");
+//     // Connect to database
+//     let mut connection = PgConnection::connect_with(&database_config.without_database_name())
+//         .await
+//         .expect("Failed to connect to database instance...");
 
-    // Create random test database
-    connection
-        .execute(&*format!(r#"CREATE DATABASE "{}";"#, database_config.database_name))
-        .await
-        .expect("Failed to create random test database...");
+//     // Create random test database
+//     connection
+//         .execute(&*format!(r#"CREATE DATABASE "{}";"#, database_config.database_name))
+//         .await
+//         .expect("Failed to create random test database...");
 
-    // Connect to database pool using random test database
-    let connection_pool = sqlx::PgPool::connect_with(database_config.with_database_name())
-        .await
-        .expect("Failed to connect to random test database connection pool...");
+//     // Connect to database pool using random test database
+//     let connection_pool = sqlx::PgPool::connect_with(database_config.with_database_name())
+//         .await
+//         .expect("Failed to connect to random test database connection pool...");
 
-    // Apply database migrations to random test database
-    sqlx::migrate!("./migrations")
-        .run(&connection_pool)
-        .await
-        .expect("Failed to apply migrations to random test database...");
+//     // Apply database migrations to random test database
+//     sqlx::migrate!("./migrations")
+//         .run(&connection_pool)
+//         .await
+//         .expect("Failed to apply migrations to random test database...");
 
-    connection_pool
-}
+//     connection_pool
+// }
 
-async fn spawn_app() -> TestApp {
+async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
     // The first time `initialize` is invoked the code in `TRACING` is executed.
     // All other invocations will instead skip execution.
     Lazy::force(&TRACING);
@@ -76,28 +78,28 @@ async fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}/api/v1/", port);
 
-    let mut configuration: configuration::Settings =
-        configuration::Settings::new()
-            .expect("Failed to read configuration...");
+    // let mut configuration: configuration::Settings =
+    //     configuration::Settings::new()
+    //         .expect("Failed to read configuration...");
         
-    // Assign a random database name to void test conflicts
-    configuration.database.database_name = Uuid::new_v4().to_string();
-    let connection_pool = init_test_database(&configuration.database).await;
+    // // Assign a random database name to void test conflicts
+    // configuration.database.database_name = Uuid::new_v4().to_string();
+    // let connection_pool = init_test_database(&configuration.database).await;
 
-    let server = startup::run(listener, connection_pool.clone())
+    let server = startup::run(listener, pool.clone())
         .expect("Failed startup server...");
     let _ = tokio::spawn(server);
 
     TestApp {
         address,
-        database_pool: connection_pool,
+        database_pool: pool,
     }
 }
 
-#[tokio::test]
-async fn ping_works() {
+#[sqlx::test]
+async fn ping_works(pool: Pool<Postgres>) -> Result<()> {
     // Arrange application for test
-    let app = spawn_app().await;
+    let app = spawn_app(pool).await;
     let client = reqwest::Client::new();
 
     // Act
@@ -110,4 +112,6 @@ async fn ping_works() {
 
     // Test assertion
     assert!(response.status().is_success());
+
+    Ok(())
 }
