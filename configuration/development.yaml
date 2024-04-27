@@ -4,7 +4,7 @@ server:
   log_level: "Debug"
 
 database:
-  host: "postgres"
+  host: "localhost"
   port: 5432
   username: "postgres"
   password: "postgres"

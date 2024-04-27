@@ -8,7 +8,7 @@ volumes:
     
 networks:
   default: # this docker-compose network
-    name: personal_ledger
+    name: personal_ledger_network
     driver: bridge
 
 services:

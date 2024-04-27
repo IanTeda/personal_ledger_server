@@ -1,9 +1,7 @@
-//! ./src/handlers/mod.rs
+//! Module containing handler functions
 //! 
-//! # HANDLER FUNCTIONS
-//! 
-//! Handlers are async functions that receives request-based arguments, request
-//! a service for data and return something a response.
+//! Handlers are async functions that receives request-based arguments from routes.
+//! The Handlers then request data from a service and return a response to the route.
 //! 
 pub mod ping;
 pub mod things;

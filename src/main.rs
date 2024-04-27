@@ -1,15 +1,17 @@
-//! ./main.rs
-//!
-//! # MAIN
-//! 
-//! The API main function.
-//! 
-//! Main functions are not async so we need some magic with #[actix_web::main]
+use crate::prelude::*;
+
 use personal_ledger_server::{configuration, startup, telemetry};
 use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use tracing::{debug, info};
 
+mod error;
+mod prelude;
+mod utils;
+
+/// The API main entry function 
+/// 
+/// Main functions are not async so we need some magic with `#[actix_web::main]``
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Load configuration file
