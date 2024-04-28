@@ -3,6 +3,7 @@
 //! # STARTUP
 //!
 //!  API server startup
+
 use crate::api;
 use actix_web::{
     dev::Server, middleware, web::{self, Data}, App, HttpServer
@@ -12,17 +13,13 @@ use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
 
 
-/// Run the Actix server
-/// 
-/// # RUN
-///
 /// Run the Actix Web HTTP server
 ///
-/// ## ATTRIBUTES
+/// # ATTRIBUTES
 ///
 /// * `listener`: TCP Listener
 ///
-///  ## RETURNS
+///  # RETURNS
 ///
 /// Returns a result with a Actix server instance or IO Error
 pub fn run(listener: TcpListener, database_connection_pool: PgPool) -> Result<Server, std::io::Error> {

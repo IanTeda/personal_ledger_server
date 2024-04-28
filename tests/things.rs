@@ -10,7 +10,6 @@ use sqlx::{PgPool, Pool, Postgres};
 use std::net::TcpListener;
 
 // Ensure that the `tracing` stack is only initialised once using `once_cell`
-#[cfg(test)]
 static TRACING: Lazy<()> = Lazy::new(|| {
     let default_filter_level = personal_ledger_server::configuration::LogLevels::Info;
     let subscriber_name = "test".to_string();
@@ -32,41 +31,11 @@ static TRACING: Lazy<()> = Lazy::new(|| {
         telemetry::init_tracing(subscriber, default_filter_level);
     };
 });
-#[cfg(test)]
+
 pub struct TestApp {
     pub address: String,
     pub database_pool: PgPool,
 }
-
-// TODO: Consider deleting as #[sqlx::test] macro does this for us, including deleting test database
-// Initialise database for each test
-// pub async fn init_test_database(database_config: &Database) -> PgPool {
-//     debug!("Test database config used to initiate random test database: {:?}", database_config );
-
-//     // Connect to database
-//     let mut connection = PgConnection::connect_with(&database_config.without_database_name())
-//         .await
-//         .expect("Failed to connect to database instance...");
-
-//     // Create random test database
-//     connection
-//         .execute(&*format!(r#"CREATE DATABASE "{}";"#, database_config.database_name))
-//         .await
-//         .expect("Failed to create random test database...");
-
-//     // Connect to database pool using random test database
-//     let connection_pool = sqlx::PgPool::connect_with(database_config.with_database_name())
-//         .await
-//         .expect("Failed to connect to random test database connection pool...");
-
-//     // Apply database migrations to random test database
-//     sqlx::migrate!("./migrations")
-//         .run(&connection_pool)
-//         .await
-//         .expect("Failed to apply migrations to random test database...");
-
-//     connection_pool
-// }
 
 #[cfg(test)]
 async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
@@ -78,7 +47,7 @@ async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
     let listener = TcpListener::bind("127.0.0.1:0")
         .expect("Failed to bind random OS port..");
     let port = listener.local_addr().unwrap().port();
-    let address = format!("http://127.0.0.1:{}/api/v1/", port);
+    let address = format!("http://127.0.0.1:{}/api/v1", port);
 
     // let mut configuration: configuration::Settings =
     //     configuration::Settings::new()
@@ -99,22 +68,54 @@ async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
 }
 
 #[sqlx::test]
-async fn ping_works(pool: Pool<Postgres>) -> Result<()> {
-    // Arrange application for test
+async fn things_works(pool: Pool<Postgres>) -> Result<()> {
+    //-- Setup and Fixtures (Arrange)
     let app = spawn_app(pool).await;
     let client = reqwest::Client::new();
 
-    // Act
+    //-- Execute Function (Act)
     let response = client
         // Use the returned application address
-        .get(&format!("{}/ping", &app.address))
+        .get(&format!("{}/things", &app.address))
         .send()
         .await
         .expect("Failed to execute request.");
 
-    // Test assertion
+    //-- Checks (Assertions)
     assert!(response.status().is_success());
-    assert_eq!(Some(7), response.content_length()); // Ping returns "Pong..."
+
+    Ok(())
+}
+
+#[sqlx::test]
+async fn post_things(pool: Pool<Postgres>) -> Result<()> {
+    //-- Setup and Fixtures (Arrange)
+    let app = spawn_app(pool).await;
+    let client = reqwest::Client::new();
+    let body = "name=Test%20ThingNoSpace&description=This%20is%20a%20description";
+
+    //-- Execute Function (Act)
+    let response: reqwest::Response = client
+        // Use the returned application address
+        .post(&format!("{}/things", &app.address))
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(body)
+        .send()
+        .await
+        .expect("Failed to execute request.");
+    // println!("{response:#?}");
+
+    //-- Checks (Assertions)
+    assert!(response.status().is_success());
+    assert_eq!(200, response.status().as_u16());
+
+    let saved = sqlx::query!("SELECT name, description FROM things",)
+        .fetch_one(&app.database_pool)
+        .await
+        .expect("Failed to fetch saved thing.");
+
+    assert_eq!(saved.name, "Test ThingNoSpace");
+    assert_eq!(saved.description.unwrap(), "This is a description");
 
     Ok(())
 }

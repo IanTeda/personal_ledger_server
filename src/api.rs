@@ -5,8 +5,9 @@
 //! API routes are abstracted into version `v1` for future breaking changes, if 
 //! needed
 
-use actix_web::web;
 use crate::routes;
+
+use actix_web::web;
 
 /// VERSION 1 API ROUTES
 /// 

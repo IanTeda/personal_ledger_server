@@ -11,6 +11,7 @@
 /// * [derive(Error)](https://github.com/dtolnay/thiserror)
 /// * [How to Handle Errors in Rust: A Comprehensive Guide](https://dev.to/nathan20/how-to-handle-errors-in-rust-a-comprehensive-guide-1cco)
 /// * [Rust Error Types Explained: Building Robust Error Handling](https://marketsplash.com/rust-error-types/)
+#[allow(dead_code)] // Remove not constructed error
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	//--

@@ -370,6 +370,7 @@ impl ThingBuilder {
     }
 }
 
+//-- Unit Tests
 #[cfg(test)]
 pub mod tests {
 
@@ -412,14 +413,14 @@ pub mod tests {
     // Test creating a new Thing without a description
     #[actix_rt::test]
     async fn create_new_thing() -> Result<()> {
-        //-- Setup and Fixtures
+        //-- Setup and Fixtures (Arrange)
         let thing_name: &str = Word().fake();
 
-        //-- Execute Function
+        //-- Execute Function (Act)
         let test_new_thing: Thing = ThingBuilder::new(thing_name).build()?;
         // println!("{test_new_thing:#?}");
 
-        //-- Checks
+         //-- Checks (Assertions)
         assert_eq!(test_new_thing.name, thing_name);
         assert_eq!(test_new_thing.description, None);
 
@@ -429,17 +430,17 @@ pub mod tests {
     // Test creating a new Thing with a description
     #[actix_rt::test]
     async fn create_new_thing_with_description() -> Result<()> {
-        //-- Setup and Fixtures
+        //-- Setup and Fixtures (Arrange)
         let thing_name: &str = Word().fake();
         let thing_description: String = Sentence(3..7).fake();
 
-        //-- Execute Function
+        //-- Execute Function (Act)
         let test_new_thing: Thing = ThingBuilder::new(thing_name)
             .description(&thing_description)
             .build()?;
         // println!("{test_new_thing:#?}");
 
-        //-- Checks
+         //-- Checks (Assertions)
         assert_eq!(test_new_thing.name, thing_name);
         assert_eq!(test_new_thing.description.unwrap(), thing_description);
 
@@ -449,14 +450,14 @@ pub mod tests {
     // Test creating a new Thing with an id
     #[actix_rt::test]
     async fn create_new_thing_with_id() -> Result<()> {
-        //-- Setup and Fixtures
+        //-- Setup and Fixtures (Arrange)
         let thing_id: Uuid = Uuid::now_v7();
         let thing_name: &str = Word().fake();
         let thing_description: String = Sentence(3..7).fake();
         let thing_created_at: DateTime<Utc> = DateTime().fake();
         let thing_updated_at: DateTime<Utc> = DateTime().fake();
 
-        //-- Execute Function
+        //-- Execute Function (Act)
         let test_new_thing: Thing = ThingBuilder::new(thing_name)
             .id(thing_id)
             .description(&thing_description)
@@ -465,7 +466,7 @@ pub mod tests {
             .build()?;
         // println!("{test_new_thing:#?}");
 
-        //-- Checks
+         //-- Checks (Assertions)
         assert_eq!(test_new_thing.id, thing_id);
         assert_eq!(test_new_thing.name, thing_name);
         assert_eq!(test_new_thing.description.unwrap(), thing_description);
@@ -478,7 +479,7 @@ pub mod tests {
     // Test creating a new Thing with an timestamp id
     #[actix_rt::test]
     async fn create_new_thing_with_id_timestamp() -> Result<()> {
-        //-- Setup and Fixtures
+        //-- Setup and Fixtures (Arrange)
         let thing_datetime: DateTime<Utc> = DateTimeAfter(chrono::DateTime::UNIX_EPOCH).fake();
         // println!("{thing_datetime:#?}");
         let thing_name: &str = Word().fake();
@@ -486,7 +487,7 @@ pub mod tests {
         let thing_created_at: DateTime<Utc> = DateTime().fake();
         let thing_updated_at: DateTime<Utc> = DateTime().fake();
 
-        //-- Execute Function
+        //-- Execute Function (Act)
         let test_new_thing: Thing = ThingBuilder::new(thing_name)
             .description(&thing_description)
             .id_set_date_time(thing_datetime)
@@ -495,7 +496,7 @@ pub mod tests {
             .build()?;
         // println!("{test_new_thing:#?}");
 
-        //-- Checks
+         //-- Checks (Assertions)
         assert_eq!(test_new_thing.name, thing_name);
         assert_eq!(test_new_thing.description.unwrap(), thing_description);
         assert_eq!(test_new_thing.created_at, thing_created_at);
@@ -519,14 +520,14 @@ pub mod tests {
     // * [Attribute Macro sqlx::test](https://docs.rs/sqlx/latest/sqlx/attr.test.html)
     #[sqlx::test]
     async fn insert(pool: Pool<Postgres>) -> Result<()> {
-        //-- Setup and Fixtures (Arrange)
+        //-- Setup and Fixtures (Arrange) (Arrange)
         let test_thing: Thing = create_random_test_thing().await?;
         debug!("test_thing equals: {:?}", test_thing);
 
-        //-- Execute Function (Act)
+        //-- Execute Function (Act) (Act)
         let record = Thing::insert(&test_thing, &pool).await?;
 
-        //-- Checks (Assert)
+         //-- Checks (Assertions) (Assert)
         // println!("unwrapped inserted record is {:?}", thing_record);
         debug!("thing_record is: {:?}", record);
         debug!("thing_record id is: {:?}", record.id);
@@ -550,7 +551,7 @@ pub mod tests {
     //   Test updating a thing row in the database
     #[sqlx::test]
     async fn update(pool: Pool<Postgres>) -> Result<()> {
-        //-- Setup and Fixtures
+        //-- Setup and Fixtures (Arrange)
         let original_test_thing: Thing = create_random_test_thing().await?;
 
         Thing::insert(&original_test_thing, &pool).await?;
@@ -560,11 +561,11 @@ pub mod tests {
         updated_test_thing.name = Word().fake();
         updated_test_thing.description = Sentence(1..2).fake();
 
-        //-- Execute Function
+        //-- Execute Function (Act)
         let update_record: Thing =
             Thing::update(&updated_test_thing, &pool).await?;
 
-        //-- Checks
+         //-- Checks (Assertions)
         assert_eq!(update_record.id, original_test_thing.id);
         assert_eq!(update_record.name, updated_test_thing.name);
         assert_eq!(update_record.description, updated_test_thing.description);
@@ -583,15 +584,15 @@ pub mod tests {
     // Test deleting a thing row in the database
     #[sqlx::test]
     async fn delete_by_id(pool: Pool<Postgres>) -> Result<()> {
-        //-- Setup and Fixtures
+        //-- Setup and Fixtures (Arrange)
         let test_thing: Thing = create_random_test_thing().await?;
         let record: Thing = Thing::insert(&test_thing, &pool).await?;
 
-        //-- Execute Function
+        //-- Execute Function (Act)
         let rows_deleted: u64 =
             Thing::delete_by_id(record.id, &pool).await?;
 
-        //-- Checks
+         //-- Checks (Assertions)
         assert_eq!(rows_deleted, 1);
 
         Ok(())
@@ -600,15 +601,15 @@ pub mod tests {
     // Test getting a thing row in the database by id
     #[sqlx::test]
     async fn get_thing_by_id(pool: Pool<Postgres>) -> Result<()> {
-        //-- Setup and Fixtures
+        //-- Setup and Fixtures (Arrange)
         let test_thing: Thing = create_random_test_thing().await?;
         Thing::insert(&test_thing, &pool).await?;
 
-        //-- Execute Function
+        //-- Execute Function (Act)
         let record: Thing =
             Thing::select_by_id(test_thing.id, &pool).await?;
 
-        //-- Checks
+         //-- Checks (Assertions)
         assert_eq!(record.id, test_thing.id);
         assert_eq!(record.name, test_thing.name);
         assert_eq!(record.description, test_thing.description);
@@ -627,15 +628,15 @@ pub mod tests {
     // Test getting a thing row in the database by name
     #[sqlx::test]
     async fn get_thing_by_name(pool: Pool<Postgres>) -> Result<()> {
-        //-- Setup and Fixtures
+        //-- Setup and Fixtures (Arrange)
         let test_thing: Thing = create_random_test_thing().await?;
         Thing::insert(&test_thing, &pool).await?;
 
-        //-- Execute Function
+        //-- Execute Function (Act)
         let record: Thing =
             Thing::select_by_id(test_thing.id, &pool).await?;
 
-        //-- Checks
+         //-- Checks (Assertions)
         assert_eq!(record.id, test_thing.id);
         assert_eq!(record.name, test_thing.name);
         assert_eq!(record.description, test_thing.description);
@@ -654,7 +655,7 @@ pub mod tests {
     // Test count of thing rows
     #[sqlx::test]
     async fn count_things(pool: Pool<Postgres>) -> Result<()> {
-        //-- Setup and Fixtures
+        //-- Setup and Fixtures (Arrange)
         let random_count: i64 = (1..20).fake::<i64>();
 
         debug!("The count is {}", random_count);
@@ -664,11 +665,11 @@ pub mod tests {
         Thing::insert(&test_thing, &pool).await?;
         }
 
-        //-- Execute Function
+        //-- Execute Function (Act)
         let test_count = 
             Thing::count_all(&pool).await?;
 
-        //-- Checks
+         //-- Checks (Assertions)
         debug!("The test_count is: {}", test_count);
         assert_eq!(test_count, random_count);
 
@@ -678,7 +679,7 @@ pub mod tests {
     // Test thing query
     #[sqlx::test]
     async fn index(pool: Pool<Postgres>) -> Result<()> {
-        //-- Setup and Fixtures
+        //-- Setup and Fixtures (Arrange)
         let random_count: i64 = (10..30).fake::<i64>();
         let mut test_vec: Vec<Thing> = Vec::new();
         for _count in 0..random_count {
@@ -686,13 +687,13 @@ pub mod tests {
             test_vec.push(Thing::insert(&test_thing, &pool).await?);
         }
 
-        //-- Execute Function
+        //-- Execute Function (Act)
         let random_limit: i64 = (1..random_count).fake::<i64>();
         let random_offset: i64 = (1..random_count).fake::<i64>();
         let records: Vec<Thing> = 
             Thing::index(random_limit, random_offset, &pool).await?;
 
-        //-- Checks
+         //-- Checks (Assertions)
         let count_less_offset: i64 = random_count - random_offset;
         let expected_records: i64;
 
