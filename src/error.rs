@@ -37,5 +37,4 @@ pub enum Error {
 
 	#[error("Config error: {0}")]
     Config(#[from] config::ConfigError)
-
 }

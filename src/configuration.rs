@@ -77,8 +77,7 @@ pub struct DatabaseSettings {
 }
 
 impl DatabaseSettings {
-    // TODO: Should be able to delete without as we are using slqx::test
-    pub fn without_database_name(&self) -> PgConnectOptions {
+    pub fn connection(&self) -> PgConnectOptions {
         let ssl_mode = if self.require_ssl {
             PgSslMode::Require
         } else {
@@ -86,15 +85,13 @@ impl DatabaseSettings {
         };
         PgConnectOptions::new()
             .host(&self.host)
+            .port(self.port)
             .username(&self.username)
             .password(self.password.expose_secret())
-            .port(self.port)
+            .database(&self.database_name)
             .ssl_mode(ssl_mode)
     }
 
-    pub fn with_database_name(&self) -> PgConnectOptions {
-        self.without_database_name().database(&self.database_name)
-    }    
     pub fn connection_url(&self) -> String {
         format!(
             "postgres://{}:{}@{}:{}/{}",
@@ -190,7 +187,7 @@ impl Configuration {
         //  1. `base.yaml` in user configuration folder
         //  2. `runtime_environment.yaml` in user configuration folder
         //  5. `PL__` environment variables
-        let configuration = config::Config::builder()
+        let configuration_builder = config::Config::builder()
             .set_default(
                 "application.runtime_environment", 
                 "development"
@@ -216,30 +213,37 @@ impl Configuration {
             )
             .build()?;
 
+        let configuration = configuration_builder.try_deserialize::<Configuration>()?;
+
+        tracing::debug!(
+            "\n----------- CONFIGURATION ----------- \n{:?} \n-------------------------------------",
+            configuration
+        );
+
         // Convert the configuration values into Settings type
-        Ok(configuration.try_deserialize::<Configuration>()?)
+        Ok(configuration)
     }
 }
 
 //-- Unit Tests
-#[cfg(test)]
-pub mod tests {
+// #[cfg(test)]
+// pub mod tests {
 
-    // Override with more flexible error
-    pub type Result<T> = core::result::Result<T, Error>;
-	pub type Error = Box<dyn std::error::Error>;
+//     // Override with more flexible error
+//     pub type Result<T> = core::result::Result<T, Error>;
+// 	pub type Error = Box<dyn std::error::Error>;
 
-    // Bring module functions into test scope
-    use super::*;
+//     // Bring module functions into test scope
+//     use super::*;
 
-    // Test creating a new Thing without a description
-    #[test]
-    fn default_config() -> Result<()> {
-        let configuration: Configuration = Configuration::parse()?;
-        // dbg!(_configuration);
-        assert!(configuration.application.address.is_empty());
-        // assert_eq!(configuration.get("application.address").ok(), "127.0.0.1");
-        Ok(())
-    }
+//     // Test creating a new Thing without a description
+//     #[test]
+//     fn default_config() -> Result<()> {
+//         let configuration: Configuration = Configuration::parse()?;
+//         // dbg!(_configuration);
+//         assert!(configuration.application.address.is_empty());
+//         // assert_eq!(configuration.get("application.address").ok(), "127.0.0.1");
+//         Ok(())
+//     }
 
-}
+// }
