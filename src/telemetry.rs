@@ -51,7 +51,7 @@ use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer, Registry};
 pub fn get_tracing_subscriber<Sink>(
     name: String,
     sink: Sink,
-    env: configuration::Env,
+    env: configuration::Environment,
     log_level: configuration::LogLevels,
 ) -> impl Subscriber + Sync + Send
 where
@@ -63,14 +63,14 @@ where
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(log_level));
 
     // When running in a development environment, output records to pretty std.out
-    let emit_pretty = env == configuration::Env::Development;
+    let emit_pretty = env == configuration::Environment::Development;
     let pretty_formatting_layer = tracing_subscriber::fmt::layer()
         // .pretty()
         .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE) // Capture Actix span events
         .with_filter(filter_fn(move |_| emit_pretty));
 
     // When running in a Production environment, output records in JSON
-    let emit_bunyan = env == configuration::Env::Production;
+    let emit_bunyan = env == configuration::Environment::Production;
     let bunyan_json_layer = JsonStorageLayer
         .with_filter(filter_fn(move |_| emit_bunyan));
     let bunyan_formatting_layer =

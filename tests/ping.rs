@@ -18,7 +18,7 @@ static TRACING: Lazy<()> = Lazy::new(|| {
         let tracing_subscriber = telemetry::get_tracing_subscriber(
             subscriber_name,
             std::io::stdout,
-            personal_ledger_server::configuration::Env::Development,
+            personal_ledger_server::configuration::Environment::Development,
             default_filter_level,
         );
         telemetry::init_tracing(tracing_subscriber, default_filter_level);
@@ -26,7 +26,7 @@ static TRACING: Lazy<()> = Lazy::new(|| {
         let subscriber = telemetry::get_tracing_subscriber(
             subscriber_name,
             std::io::sink,
-            personal_ledger_server::configuration::Env::Development,
+            personal_ledger_server::configuration::Environment::Development,
             default_filter_level,
         );
         telemetry::init_tracing(subscriber, default_filter_level);

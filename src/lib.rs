@@ -2,6 +2,7 @@
 
 pub mod api;
 pub mod configuration;
+pub mod domain;
 pub mod error;
 pub mod handlers;
 pub mod prelude;

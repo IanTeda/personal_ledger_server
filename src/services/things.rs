@@ -78,7 +78,13 @@ impl Thing {
             new_thing.updated_at
         )
         .fetch_one(database)
-        .await?;
+        .await  
+        .map_err(|e| { // TODO: Update to error
+            tracing::error!("Failed to execute query: {:?}", e);
+            e
+            // Using the `?` operator to return early
+            // if the function failed, returning a sqlx::Error
+            })?;
 
         Ok(record)
     }
@@ -109,7 +115,12 @@ impl Thing {
             Utc::now(),
         )
         .fetch_one(database)
-        .await?;
+        .await.map_err(|e| { // TODO: Update to error
+            tracing::error!("Failed to execute query: {:?}", e);
+            e
+            // Using the `?` operator to return early
+            // if the function failed, returning a sqlx::Error
+            })?;
 
         Ok(record)
     }

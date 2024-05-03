@@ -1,0 +1,20 @@
+# Server configuration
+application:
+  port: 8091
+  address: "127.0.0.1"
+
+# Postgres database config
+database:
+  host: "postgres"
+  port: 5432
+  username: "postgres"
+  password: "postgres"
+  database_name: "personal_ledger_dev"
+  require_ssl: false
+
+# SMTP configuration
+email_client:
+  base_url: "localhost"
+  sender_email: "test@gmail.com"
+  authorisation_token: "my-secret-token"
+  timeout_milliseconds: 10000

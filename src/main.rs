@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::configuration::Configuration;
 
 use personal_ledger_server::{configuration, startup, telemetry};
 use sqlx::postgres::PgPoolOptions;
@@ -16,17 +17,17 @@ mod utils;
 #[actix_web::main]
 async fn main() -> Result<()> {
     // Load configuration file
-    let config: configuration::Settings =
-        configuration::Settings::new().expect("Failed to read configuration.");
+    let config: Configuration =
+        Configuration::parse().expect("Failed to read configuration.");
 
     let tracing_subscriber = telemetry::get_tracing_subscriber(
         "personal_ledger_server".into(),
         std::io::stdout,
-        config.server.env,
-        config.server.log_level
+        config.application.runtime_environment,
+        config.application.log_level
     );
 
-    telemetry::init_tracing(tracing_subscriber, config.server.log_level);
+    telemetry::init_tracing(tracing_subscriber, config.application.log_level);
 
     debug!(
         "\n----------- CONFIGURATION ----------- \n{:?} \n-------------------------------------",
@@ -34,7 +35,7 @@ async fn main() -> Result<()> {
     );
 
     // TODO: Create configuration trait
-    let address = format!("{}:{}", config.server.address, config.server.port);
+    let address = format!("{}:{}", config.application.address, config.application.port);
 
     // TODO: do we need to reduce connection time in Docker builds
     let connection_pool = PgPoolOptions::new()
@@ -49,9 +50,10 @@ async fn main() -> Result<()> {
 
     info!(
         "Starting API server at http://{}/api/v1 in {} environment",
-        address, config.server.env
+        address, config.application.runtime_environment
     );
     startup::run(listener, connection_pool)?.await?;
+
     Ok(())
 }
 
