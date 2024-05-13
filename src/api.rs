@@ -1,3 +1,5 @@
+// -- ./src/api.rs
+
 //! Configure routes for api endpoints
 //! 
 //! # API ROUTES

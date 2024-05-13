@@ -1,6 +1,8 @@
-//! Setup the API log telemetry
+// -- ./src/telemetry.rs
+
+//! Sets up the API log telemetry
 //!
-//! # APPLICATION TELEMETRY
+//! # Application Telemetry
 //!
 //! Instrumenting to collect structured, event-based diagnostic information.
 //!
@@ -8,7 +10,7 @@
 //! pick what spans and events to grab and and what then performs tasks on the
 //! grabbed spans and events.
 //!
-//! ## REFERENCES
+//! # References
 //!
 //! Learn more about Rust Telemetry (i.e async logging)
 //!
@@ -23,6 +25,8 @@
 // TODO: Add tracing console
 
 use crate::configuration;
+use crate::prelude::*;
+
 use tracing::subscriber::set_global_default;
 use tracing::{debug, Subscriber};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
@@ -90,19 +94,23 @@ where
 
 /// Register the tracing subscriber(s) to capture and process events and spans.
 /// 
-/// # INITIATE TRACING
+/// # Initiate log tracing
 ///
 /// Register the tracing subscriber(s) to capture and process events and spans.
 ///  
 /// It should only be called once!
 ///
-/// ## ARGUMENTS
+/// # Parameters
 ///
 /// * `subscribers` - A registry of tracing subscribers.
 ///
-pub fn init_tracing(subscribers: impl Subscriber + Sync + Send, log_level: configuration::LogLevels) {
+pub fn init_tracing(
+    subscribers: impl Subscriber + Sync + Send, 
+    log_level: configuration::LogLevels
+) -> Result<()> {
     // Convert all log records into tracing events.
-    LogTracer::init().expect("Failed to set logger");
+    LogTracer::init()
+        .expect("Failed to init log tracer");
 
     // Set subscriber that should be used to process events and spans.
     set_global_default(subscribers).expect("Failed to set subscriber");
@@ -111,4 +119,6 @@ pub fn init_tracing(subscribers: impl Subscriber + Sync + Send, log_level: confi
         "Log tracing initiated at {} level and above.",
         log_level
     );
+
+    Ok(())
 }

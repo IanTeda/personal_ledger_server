@@ -1,3 +1,5 @@
+// -- ./src/errors.rs
+
 //! Main error crate
 //! 
 //! Module (folder) error crates are imported throughs

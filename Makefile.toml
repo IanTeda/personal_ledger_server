@@ -55,7 +55,7 @@ install_crate = "sqlx-cli"
 command = "sqlx"
 args = ["migrate", "run"]
 
-[tasks.init_db]
+[tasks.db_init]
 dependencies = ["db_create", "db_migrate"]
 
 # cargo sqlx prepare -- --bin personal_ledger_server

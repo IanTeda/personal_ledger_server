@@ -1,3 +1,5 @@
+// -- ./src/main.rs
+
 use crate::prelude::*;
 use crate::configuration::Configuration;
 
@@ -28,11 +30,11 @@ async fn main() -> Result<()> {
     telemetry::init_tracing(
         tracing_subscriber, 
         configuration.application.log_level
-    );
+    ).expect("Error initiating log tracer.");
 
     let database_pool = startup::get_connection_pool(&configuration.database)
         .await
-        .expect("Error connecting to database");
+        .expect("Error connecting to database.");
 
     let application = Application::build(configuration, database_pool)
         .await
