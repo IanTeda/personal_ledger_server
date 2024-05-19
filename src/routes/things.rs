@@ -2,7 +2,7 @@
 
 use crate::handlers::things;
 
-use actix_web::web;
+use actix_web::web::{self};
 
 /// # THINGS ROUTES
 /// 
@@ -14,7 +14,8 @@ use actix_web::web;
 pub fn things(config: &mut web::ServiceConfig) {
     config
         .service(things::index)
-        .service(things::create)
+        // .service(things::create)
+        .route("/", web::post().to(things::create))
         .service(things::read)
         .service(things::update)
         .service(things::delete);

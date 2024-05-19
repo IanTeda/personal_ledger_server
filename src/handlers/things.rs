@@ -16,21 +16,41 @@
 
 #![allow(unused)] // For beginning only.
 
-// use crate::prelude::*;
-use crate::services::things::*;
-use crate::domain::{NewThing, ThingName};
+use crate::{prelude::*, services};
 
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
+use chrono::Utc;
 use sqlx::PgPool;
+use tracing::info;
 use unicode_segmentation::UnicodeSegmentation;
+use uuid::Uuid;
 
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
+use crate::domain::{Thing, ThingBuilder, ThingDescription, ThingName};
+
+#[derive(serde::Deserialize, Debug)]
 pub struct ThingFormData {
 	pub name: String,
 	pub description: String
 }
 
-/// Handle `api/v1/thing` post requests and respond with a thing json
+impl TryFrom<ThingFormData> for Thing {
+	type Error = Error;
+
+    fn try_from(form: ThingFormData) -> Result<Self> {
+        let name = ThingName::parse(form.name)?;
+        let description = ThingDescription::parse(form.description)?;
+
+		Ok(Self {
+			id: Uuid::new_v7(uuid::Timestamp::now(uuid::NoContext)),
+			name,
+			description: Some(description),
+			created_at: Utc::now(),
+			updated_at: Utc::now()
+		})
+    }
+}
+
+/// Handle `(POST): api/v1/thing` post requests and respond with a thing json
 /// 
 /// # Create Thing
 /// 
@@ -43,34 +63,47 @@ pub struct ThingFormData {
 /// * `pool` - an Actix web data wrapper around a Postgres connection pool
 /// ---
 #[tracing::instrument(
-    name = "Create a new things"
+    name = "POST thing handler."
     skip(form, pool),
     fields(
         thing_name = %form.name,
 		thing_description = %form.description
     )
 )]
-#[post("")]
+/// Handle [POST] `api/v1/thing` requests and respond with a json collection of 
+/// the Thing created.
+// #[post("")]
 pub async fn create(
 	form: web::Form<ThingFormData>,
 	pool: web::Data<PgPool>,
 ) -> HttpResponse {
-	let thing: Thing = ThingBuilder::new(&form.name)
-		.description(&form.description)
-		.build()
-		.expect("Error building a new thing");
-	//  println!("{thing:#?}");
+	// let name = ThingName::parse(form.name)?;
+	let name = match ThingName::parse(&form.name) {
+		Ok(name) => name,
+		Err(_) => return HttpResponse::BadRequest().finish(),
+	};
 
-	let record = Thing::insert(&thing, &pool.as_ref()).await;
-	// println!("{record:#?}");
+	// let description = ThingDescription::parse(form.description)?;
+	let description = match ThingDescription::parse(&form.description) {
+		Ok(description) => description,
+		Err(_) => return HttpResponse::BadRequest().finish(),
+	};
 
-	match record {
-		Ok(_) => HttpResponse::Ok().json(thing),
-        Err(e) => {
-            println!("Failed to execute query: {}", e);
-            HttpResponse::InternalServerError().finish()
-        }
-	}
+	let new_thing = match ThingBuilder::new(name)
+    	.description(description)
+    	.build() {
+			Ok(thing) => thing,
+			Err(_) => return HttpResponse::BadRequest().finish(),
+		};
+
+	match services::things::insert(&new_thing, &pool).await {
+        Ok(_) => HttpResponse::Ok().finish(),
+        Err(_) => HttpResponse::InternalServerError().finish(),
+    }
+
+	// println!("{new_thing:#?}");
+
+	// HttpResponse::Ok().body("Create a thing...")
 }
 
 /// Handle `api/v1/thing` get requests and respond with a json collection
@@ -128,28 +161,59 @@ pub async fn delete() -> impl Responder {
 		.body("Find a Thing by {thing_id}, update and return confirmation...")
 }
 
-/// Returns `true` if the input satisfies all our validation constraints
-/// on subscriber names, `false` otherwise.
-pub fn is_valid_name(s: &str) -> bool {
-	// `.trim()` returns a view over the input `s` without trailing
-	// whitespace-like characters.
-	// `.is_empty` checks if the view contains any character.
-	let is_empty_or_whitespace = s.trim().is_empty();
+#[cfg(test)]
+pub mod tests {
+	// Bring file/module functions into unit test scope
+	use super::*;
 
-	// A grapheme is defined by the Unicode standard as a "user-perceived"
-	// character: `å` is a single grapheme, but it is composed of two characters
-	// (`a` and ``).
-	//
-	// `graphemes` returns an iterator over the graphemes in the input `s`.
-	// `true` specifies that we want to use the extended grapheme definition set,
-	// the recommended one.
-	let is_too_long = s.graphemes(true).count() > 256;
+	// Override with more flexible error
+	pub type Result<T> = core::result::Result<T, Error>;
+	pub type Error = Box<dyn std::error::Error>;
 
-	// Iterate over all characters in the input `s` to check if any of them matches
-	// one of the characters in the forbidden array.
-	let forbidden_characters = ['/', '(', ')', '"', '<', '>', '\\', '{', '}'];
-	let contains_forbidden_characters = s.chars().any(|g| forbidden_characters.contains(&g));
+	use fake::faker::{
+		chrono::en::{DateTime, DateTimeAfter},
+		lorem::en::*,
+	};
+	use fake::Fake;
 
-	// Return `false` if any of our conditions have been violated
-	!(is_empty_or_whitespace || is_too_long || contains_forbidden_characters)
+	#[sqlx::test]
+	async fn create_a_thing(database: sqlx::Pool<sqlx::Postgres>) -> Result<()> {
+		//-- Setup and Fixtures (Arrange)
+		let name: String = Word().fake();
+		let query_name = name.clone(); // TODO: This is clone ugly
+		let description: String = Sentence(3..7).fake();
+		let query_description = description.clone(); // TODO: This clone is ugly
+
+		let thing = ThingFormData { name, description };
+
+		let form = web::Form(thing);
+		
+		let pool = web::Data::new(database.clone());
+
+		//-- Execute Function (Act)
+		let response = create(form, pool).await;
+		// println!("{response:#?}");
+
+		//-- Checks (Assertions)
+		// Check http status is ok (200)
+		assert_eq!(200, response.status().as_u16());
+
+		// Check database record matches random name and description
+		let database_record = sqlx::query!(
+			r#"
+				SELECT * 
+				FROM things 
+				WHERE name = $1
+			"#,
+			&query_name
+		)
+		.fetch_one(&database)
+		.await?;
+		// println!("{database_record:#?}");
+
+		assert_eq!(database_record.name, query_name);
+		assert_eq!(database_record.description.unwrap(), query_description);
+
+		Ok(())
+	}
 }
