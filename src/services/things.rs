@@ -229,7 +229,7 @@ pub async fn get_by_name(
 	Ok(thing)
 }
 
-/// Get a count of all Things in the database, returning a i64
+/// Get a count of all Things in the database, returning an i64
 /// 
 /// # Parameters
 /// 
@@ -269,8 +269,8 @@ pub async fn count_all(
 	skip(database)
 )]
 pub async fn index(
-	limit: i64,
-	offset: i64,
+	limit: &i64,
+	offset: &i64,
 	database: &sqlx::Pool<sqlx::Postgres>,
 ) -> Result<Vec<Thing>> {
 	let records = sqlx::query!(
@@ -279,8 +279,8 @@ pub async fn index(
 			FROM things 
 			LIMIT $1 OFFSET $2
 		"#,
-		limit,
-		offset,
+		&limit,
+		&offset,
 	)
 	.fetch_all(database)
 	.await?;
@@ -323,7 +323,7 @@ pub mod tests {
 	use uuid::Uuid;
 
 	// Create a random Thing for testing
-	async fn create_random_test_thing() -> Result<Thing> {
+	pub async fn create_random_test_thing() -> Result<Thing> {
 		//-- Setup random thing data
 		let thing_datetime: DateTime<Utc> =
 			DateTimeAfter(chrono::DateTime::UNIX_EPOCH).fake();
@@ -332,7 +332,7 @@ pub mod tests {
 			thing_datetime.timestamp() as u64,
 			thing_datetime.timestamp_nanos_opt().unwrap() as u32,
 		);
-		// println!("{uuid_timestamp:#?}");
+		// println!("{uuid_timestamp:#?}"); 
 		let thing_id: Uuid = Uuid::new_v7(uuid_timestamp);
 		let name: String = Word().fake();
 		let thing_name = ThingName::parse(name)?;
@@ -529,7 +529,7 @@ pub mod tests {
         //-- Execute Function (Act)
         let random_limit = (1..random_count).fake::<i64>();
         let random_offset = (1..random_count).fake::<i64>();
-        let records = index(random_limit, random_offset, &pool).await?;
+        let records = index(&random_limit, &random_offset, &pool).await?;
 
         //-- Checks (Assertions)
         let count_less_offset: i64 = random_count - random_offset;

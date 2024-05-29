@@ -1,22 +1,31 @@
-//! An end point route template for /api/v1/things
+// -- ./src/routes/things.rs
+
+//! A template for defining the end point route for `/api/v1/things``
 
 use crate::handlers::things;
 
-use actix_web::web::{self};
+use actix_web::web;
 
-/// # THINGS ROUTES
+/// Configure endpoint routes for `things`
 /// 
-/// Configure Things end point calls 
+/// # Things Routes 
 /// 
-/// # ATTRIBUTES
+/// Define the CRUD routes for `/things`
+/// 
+/// # Parameters
 /// 
 /// * `config`: is the Actix route config to build off
+/// ---
 pub fn things(config: &mut web::ServiceConfig) {
     config
-        .service(things::index)
+        // .service(things::index)
+        .route("/", web::get().to(things::index))
         // .service(things::create)
         .route("/", web::post().to(things::create))
-        .service(things::read)
-        .service(things::update)
-        .service(things::delete);
+        // .service(things::read)
+        .route("/{thing_id}", web::get().to(things::read_by_id))
+        // .service(things::update)
+        .route("/", web::put().to(things::update))
+        // .service(things::delete);
+        .route("/{thing_id}", web::delete().to(things::delete_by_id));
 }

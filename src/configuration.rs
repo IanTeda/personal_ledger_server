@@ -25,6 +25,14 @@ use std::path::PathBuf;
 
 /// Directory from binary base folder to look in for configuration files
 const CONFIGURATION_DIRECTORY_PREFIX: &str = "./configuration/";
+/// If the configuration files do not set this default is used.
+const DEFAULT_RUNTIME_ENVIRONMENT: &str = "development";
+/// If the configuration files do not set this default is used.
+const DEFAULT_LOG_LEVEL: &str = "info";
+/// If the configuration files do not set this default is used.
+const DEFAULT_QUERY_OFFSET: i64 = 0;
+/// If the configuration files do not set this default is used.
+const DEFAULT_QUERY_LIMIT: i64 = 10;
 
 /// Configuration for the API
 #[derive(serde::Deserialize, Clone, Debug)]
@@ -55,7 +63,18 @@ pub struct ApplicationSettings {
     /// Application log level has a default set in builder
     pub log_level: LogLevels,
     /// Application runtime environment is set to default in the builder
-    pub runtime_environment: Environment
+    pub runtime_environment: Environment,
+    /// Default application settings
+    pub default: DefaultApplicationSettings
+}
+
+/// Default application settings
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct DefaultApplicationSettings {
+    // Default sql query offset
+    pub query_offset: i64,
+    // Default sql query limit
+    pub query_limit: i64
 }
 
 /// Configuration for connecting to the database server
@@ -189,12 +208,20 @@ impl Configuration {
         //  5. `PL__` environment variables
         let configuration_builder = config::Config::builder()
             .set_default(
-                "application.runtime_environment", 
-                "development"
+                "application.runtime_environment",
+                DEFAULT_RUNTIME_ENVIRONMENT
             )?
             .set_default(
-                "application.log_level", 
-                "info"
+                "application.log_level",
+                DEFAULT_LOG_LEVEL
+            )?
+            .set_default(
+                "application.default.query_offset",
+                DEFAULT_QUERY_OFFSET
+            )?
+            .set_default(
+                "application.default.query_limit",
+                DEFAULT_QUERY_LIMIT
             )?
             .add_source(config::File::from(
                 base_dir_path.join("base.yaml"),
