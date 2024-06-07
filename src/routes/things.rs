@@ -19,7 +19,7 @@ use actix_web::web;
 pub fn things(config: &mut web::ServiceConfig) {
     config
         // .service(things::index)
-        .route("/", web::get().to(things::index))
+        .route("/", web::get().to(things::read_index))
         // .service(things::create)
         .route("/", web::post().to(things::create))
         // .service(things::read)

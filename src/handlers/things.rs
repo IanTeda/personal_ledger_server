@@ -15,21 +15,16 @@
 //! | Delete | Entirely removes one or more existing entries                    | Delete           |
 //! ---
 
-#![allow(unused)] // For beginning only.
+// #![allow(unused)] // For beginning only.
 
 use crate::{prelude::*, services};
 
-use actix_web::{delete, get, post, put, web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, Responder};
 use actix_web::web::{Data, Form};
-use chrono::Utc;
 use sqlx::PgPool;
-use strum::Display;
-use tracing::info;
-use unicode_segmentation::UnicodeSegmentation;
 use uuid::Uuid;
-use crate::configuration::DefaultApplicationSettings;
 
-use crate::domain::{Thing, ThingBuilder, ThingDescription, ThingName};
+use crate::domain::{ThingBuilder, ThingDescription, ThingName};
 use crate::services::things::get_by_id;
 
 /// Expected Thing form struct.
@@ -129,12 +124,12 @@ pub async fn create(
 	// 	query_offset = %parameters.offset.unwrap_or(0)
     // )
 )]
-pub async fn index(
+pub async fn read_index(
 	parameters: web::Query<ThingsParameters>,
 	pool: Data<PgPool>
 ) -> HttpResponse {
-	let limit = parameters.limit.unwrap_or(10);
-	let offset = parameters.offset.unwrap_or(0);
+	let limit = parameters.limit.unwrap_or(10); // TODO: Use application wide defaults
+	let offset = parameters.offset.unwrap_or(0); // TODO: Use application wide defaults
 
 	match services::things::index(&limit, &offset, &pool).await {
 		Ok(things) => HttpResponse::Ok().json(things),
@@ -156,17 +151,11 @@ pub async fn index(
 pub async fn read_by_id(
 	parameters: web::Query<ThingsParameters>,
 	pool: Data<PgPool>
-) -> HttpResponse {
-	let id = parameters.id.unwrap();
-	// 	Ok(id) => id,
-	// 	Err(_) => HttpResponse::InternalServerError().finish(),
-	// };
+) -> Result<HttpResponse> {
+	let id = parameters.id.ok_or(Error::ParameterMissing)?;
+	let response = get_by_id(&id, &pool).await?;
 
-	match get_by_id(&id, &pool).await {
-		Ok(thing) => HttpResponse::Ok().json(thing),
-		Err(_) => HttpResponse::InternalServerError().finish(),
-	}
-	// HttpResponse::Ok().body("Find a Thing by {thing_id} and return instance...")
+	Ok(HttpResponse::Ok().json(response))
 }
 
 /// Update a Thing instance
@@ -193,7 +182,6 @@ pub async fn delete_by_id() -> impl Responder {
 
 #[cfg(test)]
 pub mod tests {
-	use chrono::DateTime;
 	// Bring file/module functions into unit test scope
 	use super::*;
 
@@ -201,16 +189,12 @@ pub mod tests {
 	pub type Result<T> = core::result::Result<T, Error>;
 	pub type Error = Box<dyn std::error::Error>;
 
-	use fake::faker::{
-		chrono::en::{DateTime, DateTimeAfter},
-		lorem::en::*,
-	};
+	use fake::faker::lorem::en::*;
 	use fake::Fake;
 
-	use crate::services::things::tests::create_random_test_thing;
-	use actix_web::{body, test, web, App, rt::pin};
+	use crate::{domain::Thing, services::things::tests::create_random_test_thing};
+	use actix_web::web;
 	use actix_web::body::MessageBody;
-	use serde_json::json;
 	use crate::services::things::insert;
 
 	#[sqlx::test]
@@ -279,11 +263,11 @@ pub mod tests {
 			// Add thing to vector
 			test_vec.push(test_thing);
 		}
+		// println!("{test_vec:#?}");
 
 		//-- Execute Function (Act)
 		// Random query limit
-		// TODO: Does the limit need to at least be 1?
-		let random_limit = (0..random_count).fake::<i64>();
+		let random_limit = (1..random_count).fake::<i64>();
 		// Random offset
 		let random_offset = (0..random_count).fake::<i64>();
 		// Build URL parameters
@@ -294,38 +278,76 @@ pub mod tests {
 		});
 		// Wrap database around Actix Data type
 		let pool = Data::new(database.clone());
-		let response = index(web_parameters, pool).await;
-		println!("{response:#?}");
-		let body = response.into_body();
-		println!("{body:#?}");
+		// Gat HTTP response
+		let response = read_index(web_parameters, pool).await;
+		// println!("{response:#?}");
+		// Unwrap response to get HTTP Response body
+		let body = response.into_body().try_into_bytes().unwrap();
+		// pin!(body);
+		// println!("{body:#?}");
+		let response_things: Vec<Thing> = serde_json::from_slice(&body).unwrap();
+		// println!("{response_things:#?}");
 
+		//-- Checks (Assertions)
+		// How random Things will there be based on limit, with end case
+		let count_less_offset: i64 = random_count - random_offset;
+		let expected_records: i64;
+		if count_less_offset <  random_limit {
+			expected_records = count_less_offset
+		} else {
+			expected_records = random_limit
+		}
+
+		let random_vec_index: i64 = (1..expected_records).fake::<i64>() - 1;
+		let random_test_vec_index = random_offset + random_vec_index;
+		let random_record_thing = &response_things[random_vec_index as usize];
+		let random_test_thing = &test_vec[random_test_vec_index as usize];
+
+		assert_eq!(response_things.len() as i64, expected_records);
+		assert_eq!(random_record_thing.id, random_test_thing.id);
+		assert_eq!(random_record_thing.name, random_test_thing.name);
+		assert_eq!(random_record_thing.description, random_test_thing.description);
+		assert_eq!(
+			random_record_thing.created_at.timestamp_millis(),
+			random_test_thing.created_at.timestamp_millis()
+		);
+		assert_eq!(
+			random_record_thing.updated_at.timestamp_millis(),
+			random_test_thing.updated_at.timestamp_millis()
+		);
 
 		Ok(())
 	}
 
 	#[sqlx::test]
 	async fn read_thing_by_id(database: sqlx::Pool<sqlx::Postgres>) -> Result<()> {
-		// Create a test instance
+		//-- Setup and Fixtures (Arrange)
+		// Create a test Thing instance
 		let test_thing = create_random_test_thing().await?;
 		// Add Thing to database
 		insert(&test_thing, &database).await?;
 
 		//-- Execute Function (Act)
+		// Build web parameters
 		let web_parameters = web::Query( ThingsParameters {
 			id: Some(test_thing.id),
 			limit: None,
 			offset: None
 		});
+		// Wrap database in Actix Data Type
 		let pool = Data::new(database.clone());
-		let response = read_by_id(web_parameters, pool).await;
+		// Execute read
+		let response = read_by_id(web_parameters, pool).await?;
 
 		//-- Checks (Assertions)
 		// Check http response is success
 		assert!(response.status().is_success());
 		// Check http status is ok (200)
 		assert_eq!(200, response.status().as_u16());
+		// Unwrap response to get HTTP Response body
 		let body = response.into_body().try_into_bytes().unwrap();
 		// pin!(body);
+		// Serialise bytes into Thing
 		let response_thing: Thing = serde_json::from_slice(&body).unwrap();
 
 		assert_eq!(test_thing.id, response_thing.id);
@@ -339,6 +361,32 @@ pub mod tests {
 			test_thing.updated_at.timestamp_millis(),
 			response_thing.updated_at.timestamp_millis()
 		);
+
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn read_error_no_id(database: sqlx::Pool<sqlx::Postgres>) -> Result<()> {
+		//-- Setup and Fixtures (Arrange)
+		// Create a test Thing instance
+		let test_thing = create_random_test_thing().await?;
+		// Add Thing to database
+		insert(&test_thing, &database).await?;
+
+		//-- Execute Function (Act)
+		// Build web parameters
+		let web_parameters = web::Query( ThingsParameters {
+			id: None,
+			limit: None,
+			offset: None
+		});
+		// Wrap database in Actix Data Type
+		let pool = Data::new(database.clone());
+		// Execute read
+		let record = read_by_id(web_parameters, pool).await.unwrap_err();
+
+		//-- Checks (Assertions)
+		assert!(matches!(record, crate::error::Error::ParameterMissing));
 
 		Ok(())
 	}

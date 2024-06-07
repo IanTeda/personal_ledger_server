@@ -6,6 +6,9 @@
 pub mod ping;
 pub mod things;
 pub mod companies;
+pub mod errors;
+
+pub use errors::*;
 
 // pub use ping::*; // There is only one function so we do not need the glob `*`
 // pub use things::*;
