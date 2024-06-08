@@ -53,7 +53,7 @@ impl ThingDescription {
         let contains_forbidden_characters = description.chars().any(|g| forbidden_characters.contains(&g));
 
         if is_empty_or_whitespace || is_too_long || contains_forbidden_characters {
-            Err(Error::Generic(format!("{} is not a valid thing description.", description)))
+            Err(Error::ThingDescriptionValidationError { description })
         } else {
             Ok(Self(description))
         }
@@ -89,42 +89,63 @@ mod tests {
 
     #[test]
     fn a_256_grapheme_long_name_is_valid() -> Result<()> {
-        let name = "a̐".repeat(256);
-        assert_ok!(ThingDescription::parse(name));
+        let description = "a̐".repeat(256);
+        assert_ok!(ThingDescription::parse(description));
 
         Ok(())
     }
 
     #[test]
     fn a_name_longer_than_256_graphemes_is_rejected() -> Result<()> {
-        let name = "a".repeat(257);
-        assert_err!(ThingDescription::parse(name));
+        let description = "a".repeat(257);
+        assert_err!(ThingDescription::parse(description.clone()));
+        assert!(
+            matches!(
+                ThingDescription::parse(description),
+                Err(crate::error::Error::ThingDescriptionValidationError {..} )
+            )
+        );
 
         Ok(())
     }
 
     #[test]
     fn whitespace_only_names_are_rejected() -> Result<()> {
-        let name = " ".to_string();
-        assert_err!(ThingDescription::parse(name));
-
+        let description = " ".to_string();
+        assert_err!(ThingDescription::parse(description.clone()));
+        assert!(
+            matches!(
+                ThingDescription::parse(description),
+                Err(crate::error::Error::ThingDescriptionValidationError {..} )
+            )
+        );
         Ok(())
     }
 
     #[test]
     fn empty_string_is_rejected() -> Result<()> {
-        let name = "".to_string();
-        assert_err!(ThingDescription::parse(name));
-
+        let description = "".to_string();
+        assert_err!(ThingDescription::parse(description.clone()));
+        assert!(
+            matches!(
+                ThingDescription::parse(description),
+                Err(crate::error::Error::ThingDescriptionValidationError {..} )
+            )
+        );
         Ok(())
     }
 
     #[test]
     fn names_containing_an_invalid_character_are_rejected() -> Result<()> {
-        for name in &['/', '(', ')', '"', '<', '>', '\\', '{', '}'] {
-            let name = name.to_string();
-            assert_err!(ThingDescription::parse(name));
-        }
+        for description in &['/', '(', ')', '"', '<', '>', '\\', '{', '}'] {
+            let description = description.to_string();
+            assert_err!(ThingDescription::parse(description.clone()));
+            assert!(
+                matches!(
+                ThingDescription::parse(description),
+                Err(crate::error::Error::ThingDescriptionValidationError {..} )
+            )
+        );        }
 
         Ok(())
     }

@@ -55,7 +55,8 @@ impl ThingName {
 			name.chars().any(|g| forbidden_characters.contains(&g));
 
 		if is_empty_or_whitespace || is_too_long || contains_forbidden_characters {
-			Err(Error::Generic(format!("{} is not a valid thing name.", name)))
+			// Err(Error::Generic(format!("{} is not a valid thing name.", name)))
+			Err(Error::ThingNameValidationError { name })
 		} else {
 			Ok(Self(name))
 		}
@@ -93,7 +94,13 @@ mod tests {
 	#[test]
 	fn a_name_longer_than_256_graphemes_is_rejected() -> Result<()> {
 		let name = "a".repeat(257);
-		assert_err!(ThingName::parse(name));
+		assert_err!(ThingName::parse(name.clone()));
+		assert!(
+			matches!(
+                ThingName::parse(name),
+                Err(crate::error::Error::ThingNameValidationError {..} )
+            )
+		);
 
 		Ok(())
 	}
@@ -101,7 +108,13 @@ mod tests {
 	#[test]
 	fn whitespace_only_names_are_rejected() -> Result<()> {
 		let name = " ".to_string();
-		assert_err!(ThingName::parse(name));
+		assert_err!(ThingName::parse(name.clone()));
+		assert!(
+			matches!(
+                ThingName::parse(name),
+                Err(crate::error::Error::ThingNameValidationError {..} )
+            )
+		);
 
 		Ok(())
 	}
@@ -109,7 +122,13 @@ mod tests {
 	#[test]
 	fn empty_string_is_rejected() -> Result<()> {
 		let name = "".to_string();
-		assert_err!(ThingName::parse(name));
+		assert_err!(ThingName::parse(name.clone()));
+		assert!(
+			matches!(
+                ThingName::parse(name),
+                Err(crate::error::Error::ThingNameValidationError {..} )
+            )
+		);
 
 		Ok(())
 	}
@@ -118,8 +137,13 @@ mod tests {
 	fn names_containing_an_invalid_character_are_rejected() -> Result<()> {
 		for name in &['/', '(', ')', '"', '<', '>', '\\', '{', '}'] {
 			let name = name.to_string();
-			assert_err!(ThingName::parse(name));
-		}
+			assert_err!(ThingName::parse(name.clone()));
+			assert!(
+				matches!(
+                ThingName::parse(name),
+                Err(crate::error::Error::ThingNameValidationError {..} )
+            )
+		);		}
 		Ok(())
 	}
 

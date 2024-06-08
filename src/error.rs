@@ -35,6 +35,14 @@ pub enum Error {
     ThingUnknownName,
 	#[error("Parameter missing from query.")]
 	ParameterMissing,
+	#[error("{name:?} is not a valid Thing name.")]
+	ThingNameValidationError {
+		name: String,
+	},
+	#[error("{description:?} is not a valid Thing description.")]
+	ThingDescriptionValidationError {
+		description: String,
+	},
 
 	// #[error(transparent)]
 	// Services(#[from] crate::personal_ledger_server::services::error::Error),
