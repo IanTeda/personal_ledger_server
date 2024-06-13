@@ -9,14 +9,14 @@ homepage = "https://ianteda.github.io/personal_ledger/"
 repository = "https://github.com/IanTeda/personal_ledger_server"
 readme = "README.md"
 license-file = "LICENSE.txt"
-keywords = ["personal finance", "finance", "ledger", "money", "money tracking"]
+keywords = ["personal", "finance", "ledger", "money", "tracking"]
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
 # unused = "allow" # For experimental dev.
 
-[lints]
-workspace = true
+#[lints]
+#workspace = true
 
 [lib]
 path = "src/lib.rs"
@@ -64,6 +64,7 @@ tracing-subscriber = { version = "0.3", features = [
 ] }
 unicode-segmentation = "1.11.0"
 uuid = { version = "1", features = ["v4", "v7", "serde"] }
+wiremock = "0.6.0"
 
 [dev-dependencies]
 actix-rt = "2"

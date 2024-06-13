@@ -1,6 +1,6 @@
 // -- ./startup.rs
 
-//! A helper function to starting the Actix server.
+//! A helper function for starting the Actix server.
 //! ---
 
 use crate::api;
@@ -24,11 +24,21 @@ pub struct Application {
 	server: Server,
 }
 
+/// Actix application instance
 impl Application {
-	/// Build application
+	/// Actix application builder
+	///
+	/// # Build
+	///
+	/// Build an Actix web server, returning an instance of the Application struct.
+	///
+	/// # Parameter
+	///
+	/// * `configuration` - Server configuration struct
+	/// * `pool` - SQLX connection pool
 	pub async fn build(
 		configuration: Configuration,
-		connection_pool: PgPool,
+		pool: PgPool,
 	) -> Result<Self> {
 		let address = format!(
 			"{}:{}",
@@ -36,10 +46,10 @@ impl Application {
 		);
 		let listener = TcpListener::bind(address)?;
 		let port = listener.local_addr()?.port();
-		let server = run(listener, connection_pool)?;
+		let server = run(listener, pool)?;
 
 		tracing::info!(
-			"Starting API server at http://{}:{}/api/v1 in {} environment",
+			"Starting API server at http://{}:{}/api/v1/ping in {} environment",
 			configuration.application.address,
 			port,
 			configuration.application.runtime_environment
@@ -48,11 +58,12 @@ impl Application {
 		Ok(Self { port, server })
 	}
 
+	/// Return the port used in building the Actix application.
 	pub fn port(&self) -> u16 {
 		self.port
 	}
 
-    /// Run application
+    /// Run the Actix application until it is stopped
 	pub async fn run_until_stopped(self) -> Result<()> {
 		let application = self.server.await?;
 		return Ok(application);

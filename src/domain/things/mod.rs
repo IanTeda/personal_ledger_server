@@ -10,7 +10,7 @@ use chrono::prelude::*;
 use uuid::Uuid;
 
 use crate::prelude::*;
-extern crate derive_more;
+// extern crate derive_more;
 
 /// A Thing struct model.
 ///
@@ -26,8 +26,6 @@ extern crate derive_more;
 	Clone,
 	Debug,
     PartialEq,
-	// derive_more::From,
-	// derive_more::Into,
 	serde::Deserialize,
 	serde::Serialize,
 	sqlx::FromRow,
