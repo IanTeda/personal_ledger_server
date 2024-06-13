@@ -1,6 +1,8 @@
-//! Setup the API log telemetry
+// -- ./src/telemetry.rs
+
+//! Sets up the API log telemetry
 //!
-//! # APPLICATION TELEMETRY
+//! # Application Telemetry
 //!
 //! Instrumenting to collect structured, event-based diagnostic information.
 //!
@@ -8,7 +10,7 @@
 //! pick what spans and events to grab and and what then performs tasks on the
 //! grabbed spans and events.
 //!
-//! ## REFERENCES
+//! # References
 //!
 //! Learn more about Rust Telemetry (i.e async logging)
 //!
@@ -23,6 +25,8 @@
 // TODO: Add tracing console
 
 use crate::configuration;
+use crate::prelude::*;
+
 use tracing::subscriber::set_global_default;
 use tracing::{debug, Subscriber};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
@@ -51,7 +55,7 @@ use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer, Registry};
 pub fn get_tracing_subscriber<Sink>(
     name: String,
     sink: Sink,
-    env: configuration::Env,
+    env: configuration::Environment,
     log_level: configuration::LogLevels,
 ) -> impl Subscriber + Sync + Send
 where
@@ -63,14 +67,14 @@ where
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(log_level));
 
     // When running in a development environment, output records to pretty std.out
-    let emit_pretty = env == configuration::Env::Development;
+    let emit_pretty = env == configuration::Environment::Development;
     let pretty_formatting_layer = tracing_subscriber::fmt::layer()
         // .pretty()
         .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE) // Capture Actix span events
         .with_filter(filter_fn(move |_| emit_pretty));
 
     // When running in a Production environment, output records in JSON
-    let emit_bunyan = env == configuration::Env::Production;
+    let emit_bunyan = env == configuration::Environment::Production;
     let bunyan_json_layer = JsonStorageLayer
         .with_filter(filter_fn(move |_| emit_bunyan));
     let bunyan_formatting_layer =
@@ -90,19 +94,23 @@ where
 
 /// Register the tracing subscriber(s) to capture and process events and spans.
 /// 
-/// # INITIATE TRACING
+/// # Initiate log tracing
 ///
 /// Register the tracing subscriber(s) to capture and process events and spans.
 ///  
 /// It should only be called once!
 ///
-/// ## ARGUMENTS
+/// # Parameters
 ///
 /// * `subscribers` - A registry of tracing subscribers.
 ///
-pub fn init_tracing(subscribers: impl Subscriber + Sync + Send, log_level: configuration::LogLevels) {
+pub fn init_tracing(
+    subscribers: impl Subscriber + Sync + Send, 
+    log_level: configuration::LogLevels
+) -> Result<()> {
     // Convert all log records into tracing events.
-    LogTracer::init().expect("Failed to set logger");
+    LogTracer::init()
+        .expect("Failed to init log tracer");
 
     // Set subscriber that should be used to process events and spans.
     set_global_default(subscribers).expect("Failed to set subscriber");
@@ -111,4 +119,6 @@ pub fn init_tracing(subscribers: impl Subscriber + Sync + Send, log_level: confi
         "Log tracing initiated at {} level and above.",
         log_level
     );
+
+    Ok(())
 }

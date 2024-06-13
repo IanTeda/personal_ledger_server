@@ -15,7 +15,7 @@ servers:
     description: Development Container
     variables:
       server:
-        default: 'api_development'
+        default: 'localhost'
       port: 
         default: '8091'
       basePath:

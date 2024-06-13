@@ -1,82 +1,49 @@
-//! Import configuration from `./configuration` folder
+// -- ./src/configuration.rs
+
+//! Application configuration settings
 //!
-//! # APPLICATION CONFIGURATION
+//! # Application Configuration Crate
 //!
-//! A layered configuration system.
+//! Get API configuration from the `./configuration/base.yaml` file and
+//! overwrite with runtime environment configuration `./config/production.yaml`
+//! and environmental runtime variables.
 //!
-//! Get API configuration for the external `./config/default.yaml` file and
-//! overwrite with runtime environment configuration `./config/production.yaml`.
+//! # References
 //!
-//! #### REFERENCES
 //! * [config.rs Repository](https://github.com/mehcode/config-rs)
 //! * [Configuration management in Rust web services](https://blog.logrocket.com/configuration-management-in-rust-web-services/)
 
-use serde::Deserialize;
-use sqlx::postgres::{PgConnectOptions, PgSslMode};
+// #![allow(unused)] // For development only
+
+use crate::prelude::*;
+
+use secrecy::{ExposeSecret, Secret};
 use serde_aux::field_attributes::deserialize_number_from_string;
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use strum::{AsRefStr, Display};
+use std::path::PathBuf;
 
-/// # DEFAULT_CONFIG_FILE_PATH
-///
-/// Default configuration file
-const DEFAULT_CONFIG_FILE_PATH: &str = "./configuration/default.yaml";
-/// # CONFIG_FILE_PREFIX
-///
-/// Configuration folder to look in for runtime configurations
-const CONFIG_FILE_PREFIX: &str = "./configuration/";
+/// Directory from binary base folder to look in for configuration files
+const CONFIGURATION_DIRECTORY_PREFIX: &str = "./configuration/";
+/// If the configuration files do not set this default is used.
+const DEFAULT_RUNTIME_ENVIRONMENT: &str = "development";
+/// If the configuration files do not set this default is used.
+const DEFAULT_LOG_LEVEL: &str = "info";
+/// If the configuration files do not set this default is used.
+const DEFAULT_QUERY_OFFSET: i64 = 0;
+/// If the configuration files do not set this default is used.
+const DEFAULT_QUERY_LIMIT: i64 = 10;
 
-/// # ENV
-///
-/// Server runtime environment
-///
-/// Strum crate is used to derive Display trait and serialise Display output into
-/// snake case
-///
-/// ## ATTRIBUTES
-///
-/// * `Development`: Development run time environment
-/// * `Testing`: Testing run time environment
-/// * `Production`: Production environment
-#[derive(Clone, Debug, serde::Deserialize, PartialEq, Copy, Display)]
-#[strum(serialize_all = "snake_case")]
-pub enum Env {
-    // #[strum(serialize = "development")]
-    Development,
-    // #[strum(serialize = "testing")]
-    Testing,
-    // #[strum(serialize = "production")]
-    Production,
+/// Configuration for the API
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct Configuration {
+	pub database: DatabaseSettings,
+	pub application: ApplicationSettings,
+	pub email_client: EmailClientSettings,
 }
 
-/// # LOG LEVELS
-///
-/// Define log levels available.
-///
-/// ## ATTRIBUTES
-///
-/// * `Error`: Error conditions within an application that hinder the execution
-///    of a specific operation. The application can continue functioning at a
-///    reduced level of functionality or performance
-/// * `Warn`: Warn that something unexpected has occurred, but the application
-///    can continue to function normally for the time being. It is also used to
-///    signify conditions that should be promptly addressed before they escalate
-///    into problems for the application.
-/// * `Info`: Info captures events in the system that are significant to the
-///    application's business purpose. Such events are logged to show that the
-///    system is operating normally. Production systems typically default to
-///    logging at this level
-/// * `Debug`: Debug is used for logging messages that aid developers in
-///    identifying issues during a debugging session.
-/// * `Trace`: Trace is designed specifically for tracing the path of code execution
-///    within a program. It is primarily used to provide a detailed breakdown of
-///    the events leading up to a crash, error, or other logged events at higher
-///    levels.
-///
-///  #### REFERENCES
-///
-/// * [Log Levels Explained and How to Use Them](https://betterstack.com/community/guides/logging/log-levels-explained/)
-#[derive(Clone, Debug, serde::Deserialize, Display, AsRefStr, Copy)]
-#[strum(serialize_all = "snake_case")]
+/// Define log levels the system will recognise
+#[derive( serde::Deserialize, Debug, Clone, AsRefStr, Display, Copy)]
 pub enum LogLevels {
     Error,
     Warn,
@@ -85,57 +52,51 @@ pub enum LogLevels {
     Trace,
 }
 
-/// # FROM TRAIT
-///
-/// Add logic you might want to enable or disable based on the runtime
-/// environment
-impl From<&str> for Env {
-    fn from(env: &str) -> Self {
-        match env {
-            "Testing" => Env::Testing,
-            "Production" => Env::Production,
-            _ => Env::Development,
-        }
-    }
-}
-
-/// # Server
-///
-/// Server settings
-///
-/// ## Attributes
-///
-/// * `port`: Port that the api server will run on
-/// * `address`: The API server address without http/https
-/// * `env`: Server runtime environment
-/// * `log_level`: Log level to use in the application
-#[derive(Debug, serde::Deserialize, Clone)]
-pub struct Server {
-    pub port: u16,
+/// Configuration for running the API application
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct ApplicationSettings {
+    // The host address the api should bind to
     pub address: String,
-    pub env: Env,
+    /// The port that the api should bind to
+	#[serde(deserialize_with = "deserialize_number_from_string")]
+	pub port: u16,
+    /// Application log level has a default set in builder
     pub log_level: LogLevels,
+    /// Application runtime environment is set to default in the builder
+    pub runtime_environment: Environment,
+    /// Default application settings
+    pub default: DefaultApplicationSettings
 }
 
-#[derive(Debug, serde::Deserialize, Clone)]
-pub struct Database {
+/// Default application settings
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct DefaultApplicationSettings {
+    // Default sql query offset
+    pub query_offset: i64,
+    // Default sql query limit
+    pub query_limit: i64
+}
+
+/// Configuration for connecting to the database server
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct DatabaseSettings {
+    /// Database host address
     pub host: String,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub port: u16,
-    pub username: String,
-    pub password: String,
+    /// Database host port
+	#[serde(deserialize_with = "deserialize_number_from_string")]
+	pub port: u16,
+    /// Database username for login
+	pub username: String,
+    /// Database password for login
+    pub password: Secret<String>,
+    /// Database name to use
     pub database_name: String,
-    pub require_ssl: bool,
+    /// Should ssl be used to connect to the database
+	pub require_ssl: bool,
 }
 
-impl Database {
-    pub fn connection_url(&self) -> String {
-        format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username, self.password, self.host, self.port, self.database_name
-        )
-    }
-    pub fn without_database_name(&self) -> PgConnectOptions {
+impl DatabaseSettings {
+    pub fn connection(&self) -> PgConnectOptions {
         let ssl_mode = if self.require_ssl {
             PgSslMode::Require
         } else {
@@ -143,59 +104,173 @@ impl Database {
         };
         PgConnectOptions::new()
             .host(&self.host)
-            .username(&self.username)
-            .password(&self.password)
             .port(self.port)
+            .username(&self.username)
+            .password(self.password.expose_secret())
+            .database(&self.database_name)
             .ssl_mode(ssl_mode)
     }
-    pub fn with_database_name(&self) -> PgConnectOptions {
-        self.without_database_name().database(&self.database_name)
+
+    pub fn connection_url(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}/{}",
+            self.username, self.password.expose_secret(), self.host, self.port, self.database_name
+        )
     }
 }
 
-/// # Settings
-///
-/// Root level configuration
-///
-/// ## Attributes
-///
-/// * `server`: Server setting struct
-#[derive(Debug, Deserialize, Clone)]
-pub struct Settings {
-    pub server: Server,
-    pub database: Database,
+/// Configuration for connecting to the email provider
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct EmailClientSettings {
+    /// URL for connecting to the email client
+	pub base_url: String,
+    /// Sender email address
+	pub sender_email: String,
+    /// Authorisation token for connecting the email provider
+	pub authorisation_token: Secret<String>,
+    /// How long should be try to connect to the email provider
+	pub timeout_milliseconds: u64,
 }
 
-/// # Settings
-///
-/// Implementation of the settings trait for the configuration module
-impl Settings {
-    /// # new
-    ///
-    /// A new setting constructor
-    ///
-    /// ## RETURNS
-    ///
-    /// This function will return a Result<Self, config::ConfigError> since we are
-    /// doing some file reading and need to manage errors.
-    ///
-    /// TODO: Check for a correct run time environment else panic
-    /// TODO: Check for a correct log level else panic
-    pub fn new() -> Result<Self, config::ConfigError> {
-        // If RUN_ENV is not set then default to `Development`
-        // TODO: Should we throw an error here instead of defaulting it to "Development"
-        let env = std::env::var("RUN_ENV").unwrap_or_else(|_| "development".into());
+/// The possible runtime environment for our application.
+#[derive(Clone, Debug, serde::Deserialize, PartialEq, Copy, Display)]
+#[strum(serialize_all = "snake_case")]
+pub enum Environment {
+	Development,
+    Testing,
+	Production,
+}
 
-        let settings = config::Config::builder()
-            .set_default("server.env", env.clone())?
-            .add_source(config::File::with_name(DEFAULT_CONFIG_FILE_PATH))
-            .add_source(config::File::with_name(&format!(
-                "{}{}",
-                CONFIG_FILE_PREFIX, env
-            )))
-            .build()
-            .unwrap();
+impl Environment {
+	pub fn as_str(&self) -> &'static str {
+		match self {
+			Environment::Development => "development",
+            Environment::Testing => "testing",
+			Environment::Production => "production",
+		}
+	}
+}
 
-        settings.try_deserialize::<Settings>()
+impl TryFrom<String> for Environment {
+	type Error = String;
+
+	fn try_from(s: String) -> core::result::Result<Self, Self::Error> {
+		match s.to_lowercase().as_str() {
+            "development" => Ok(Self::Development),
+            "testing" => Ok(Self::Testing),
+            "production" => Ok(Self::Production),
+            other => Err(format!(
+                "{} is not a supported environment. Use either `development`, `testing` or `production`.",
+                other
+            )),
+        }
+	}
+}
+
+/// Returns the runtime environment enum used to start the application
+/// 
+/// This function parse the runtime environmental variables for "APP_ENVIRONMENT".
+/// If the variable is not set, then default to development
+pub fn get_runtime_environment() -> Result<Environment> {
+    let environment: Environment = std::env::var("APP_ENVIRONMENT")
+        .unwrap_or_else(|_| "development".into())
+        .try_into()
+        .expect("Failed to parse APP_ENVIRONMENT.");
+    Ok(environment)
+}
+
+impl Configuration {
+    /// Parse the application configuration from yaml files, returning a 
+    /// `Configuration` result.
+    pub fn parse() -> Result<Configuration> {
+
+        // Define the configuration directory within the base application directory
+        let base_dir_path: PathBuf = std::env::current_dir()
+            .expect("Failed to parse current directory.")
+            .join(CONFIGURATION_DIRECTORY_PREFIX);
+        // dbg!(base_dir_path);
+
+        let environment_filename = format!(
+            "{}.yaml", 
+            get_runtime_environment()?.as_str()
+        );
+        // dbg!(environment_filename);
+
+        // Build our configuration reader
+        // 
+        // # Setting
+        // 
+        // Configuration files are added in this order, with subsequent files
+        // overwriting previous configurations if present:
+        // 
+        //  1. `base.yaml` in user configuration folder
+        //  2. `runtime_environment.yaml` in user configuration folder
+        //  5. `PL__` environment variables
+        let configuration_builder = config::Config::builder()
+            .set_default(
+                "application.runtime_environment",
+                DEFAULT_RUNTIME_ENVIRONMENT
+            )?
+            .set_default(
+                "application.log_level",
+                DEFAULT_LOG_LEVEL
+            )?
+            .set_default(
+                "application.default.query_offset",
+                DEFAULT_QUERY_OFFSET
+            )?
+            .set_default(
+                "application.default.query_limit",
+                DEFAULT_QUERY_LIMIT
+            )?
+            .add_source(config::File::from(
+                base_dir_path.join("base.yaml"),
+            ))
+            .add_source(config::File::from(
+                base_dir_path.join(environment_filename),
+            ))
+
+            // -- Environmental variables
+            // Add in settings from environment variables (with a prefix of PL and '__' as separator)
+            // E.g. `APP_APPLICATION__PORT=5001 would set `Settings.application.port`
+            .add_source(
+                config::Environment::with_prefix("PL")
+                    .prefix_separator("_")
+                    .separator("__"),
+            )
+            .build()?;
+
+        let configuration = configuration_builder.try_deserialize::<Configuration>()?;
+
+        tracing::debug!(
+            "\n----------- CONFIGURATION ----------- \n{:?} \n-------------------------------------",
+            configuration
+        );
+
+        // Convert the configuration values into Settings type
+        Ok(configuration)
     }
 }
+
+//-- Unit Tests
+// #[cfg(test)]
+// pub mod tests {
+
+//     // Override with more flexible error
+//     pub type Result<T> = core::result::Result<T, Error>;
+// 	pub type Error = Box<dyn std::error::Error>;
+
+//     // Bring module functions into test scope
+//     use super::*;
+
+//     // Test creating a new Thing without a description
+//     #[test]
+//     fn default_config() -> Result<()> {
+//         let configuration: Configuration = Configuration::parse()?;
+//         // dbg!(_configuration);
+//         assert!(configuration.application.address.is_empty());
+//         // assert_eq!(configuration.get("application.address").ok(), "127.0.0.1");
+//         Ok(())
+//     }
+
+// }

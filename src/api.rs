@@ -1,18 +1,18 @@
+// -- ./src/api.rs
+
 //! Configure routes for api endpoints
 //! 
-//! # API ROUTES
+//! # API Routes
 //! 
-//! API routes are abstracted into version `v1` for future breaking changes, if 
-//! needed
+//! API routes are abstracted into version `v1` for future breaking changes, if needed
 
-use actix_web::web;
 use crate::routes;
 
-/// VERSION 1 API ROUTES
+use actix_web::web;
+
+/// Version 1 root level routes are set up in this function
 /// 
-/// Root level routes are set up in this function
-/// 
-/// ## ATTRIBUTES
+/// # Parameters
 /// 
 /// * `config`: is the Actix route config to build off
 pub fn v1(config: &mut web::ServiceConfig) {

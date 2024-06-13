@@ -1,7 +1,7 @@
 server:
   port: 8091
   address: "127.0.0.1"
-  log_level: "Debug"
+  log_level: "Info"
 
 database:
   host: "localhost"

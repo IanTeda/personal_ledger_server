@@ -1,19 +1,16 @@
-//! ./src/routes/ping.rs
-//! 
-//! # PING ROUTE
-//! 
-//! End point route for /api/v1/ping
-//! 
-use actix_web::web;
-use crate::handlers;
+//-- ./src/routes/ping.rs
 
-/// # PING
+//! End point route for /api/v1/ping
+
+use crate::handlers::ping;
+
+use actix_web::web;
+
+/// Configure ping end point calls
 /// 
-/// Configure ping end point calls 
-/// 
-/// ## ATTRIBUTES
+/// # Parameters
 /// 
 /// * `config`: is the Actix route config to build off
 pub fn ping(config: &mut web::ServiceConfig) {
-    config.service(handlers::ping::index);
+    config.route("",web::get().to(ping::index));
 }
