@@ -49,7 +49,7 @@ impl Application {
 		let server = run(listener, pool)?;
 
 		tracing::info!(
-			"Starting API server at http://{}:{}/api/v1/ping in {} environment",
+			"Starting API server at http://{}:{}/api/v1 in {} environment",
 			configuration.application.address,
 			port,
 			configuration.application.runtime_environment

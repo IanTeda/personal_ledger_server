@@ -1,11 +1,13 @@
+//-- ./src/handlers/things.rs
+
 //! Thing handler for receiving a request and providing a response
 //!
 //! A template for creating a `CRUD` route.
 //!
-//! * `C`reate implements `POST`
-//! * `R`ead implements `GET`
-//! * `U`pdate implements `PUT/PATCH`
-//! * `D`elete implements `DELETE`
+//! * Create implements `POST`
+//! * Read implements `GET`
+//! * Update implements `PUT/PATCH`
+//! * Delete implements `DELETE`
 //!
 //! |- NAME -|- DESCRIPTION                                                    -|- SQL EQUIVALENT -|
 //! |--------|------------------------------------------------------------------|------------------|
@@ -17,15 +19,16 @@
 
 // #![allow(unused)] // For beginning only.
 
-use crate::{prelude::*, services};
+use crate::{
+	domain::{ThingBuilder, ThingDescription, ThingName},
+	prelude::*,
+	services::things
+};
 
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse};
 use actix_web::web::{Data, Form};
 use sqlx::PgPool;
 use uuid::Uuid;
-
-use crate::domain::{ThingBuilder, ThingDescription, ThingName};
-use crate::services::things::get_by_id;
 
 /// Expected Thing form struct.
 #[derive(serde::Deserialize, Debug, PartialEq)]
@@ -67,18 +70,9 @@ pub struct ThingsParameters {
 pub async fn create(
 	form: Form<ThingFormData>,
 	pool: Data<PgPool>,
-) -> HttpResponse {
-	// let name = ThingName::parse(form.name)?;
-	let name = match ThingName::parse(&form.name) {
-		Ok(name) => name,
-		Err(_) => return HttpResponse::BadRequest().finish(),
-	};
-
-	// let description = ThingDescription::parse(form.description)?;
-	let description = match ThingDescription::parse(&form.description) {
-		Ok(description) => description,
-		Err(_) => return HttpResponse::BadRequest().finish(),
-	};
+) -> Result<HttpResponse> {
+	let name = ThingName::parse(&form.name)?;
+	let description = ThingDescription::parse(&form.description)?;
 
 	// TODO: is a type conversion better than a builder?
 	// let new_thing = match form.0.try_into() {
@@ -86,22 +80,15 @@ pub async fn create(
     //     Err(_) => return HttpResponse::BadRequest().finish(),
     // };
 
-	let new_thing = match ThingBuilder::new(name)
+	let new_thing = ThingBuilder::new(name)
     	.description(description)
-    	.build() {
-			Ok(thing) => thing,
-			Err(_) => return HttpResponse::BadRequest().finish(),
-		};
-
-	match services::things::insert(&new_thing, &pool).await {
-        // Ok(_) => HttpResponse::Ok().finish(), // web::Json(obj)
-		Ok(thing) => HttpResponse::Ok().json(thing),
-        Err(_) => HttpResponse::InternalServerError().finish(),
-    }
-
+    	.build()?;
 	// println!("{new_thing:#?}");
 
-	// HttpResponse::Ok().body("Create a thing...")
+	let thing = things::insert(&new_thing, &pool).await?;
+	// println!("{thing:#?}");
+
+	Ok(HttpResponse::Ok().json(thing))
 }
 
 /// Handle `[GET] api/v1/thing` get requests and respond with a json collection
@@ -119,22 +106,21 @@ pub async fn create(
 #[tracing::instrument(
     name = "GET index thing handler."
     skip(parameters, pool),
-    // fields(
-    //     query_limit = %parameters.limit.unwrap_or(10), // TODO: i64 does not have a display trait
-	// 	query_offset = %parameters.offset.unwrap_or(0)
-    // )
+    fields(
+        query_limit = %parameters.limit.unwrap_or(10), // TODO: i64 does not have a display trait
+		query_offset = %parameters.offset.unwrap_or(0)
+    )
 )]
 pub async fn read_index(
 	parameters: web::Query<ThingsParameters>,
 	pool: Data<PgPool>
-) -> HttpResponse {
+) -> Result<HttpResponse> {
 	let limit = parameters.limit.unwrap_or(10); // TODO: Use application wide defaults
 	let offset = parameters.offset.unwrap_or(0); // TODO: Use application wide defaults
 
-	match services::things::index(&limit, &offset, &pool).await {
-		Ok(things) => HttpResponse::Ok().json(things),
-		Err(_) => HttpResponse::InternalServerError().finish(),
-	}
+	let things = things::index(&limit, &offset, &pool).await?;
+
+	Ok(HttpResponse::Ok().json(things))
 }
 
 /// Read a thing with `thing_id``
@@ -153,9 +139,9 @@ pub async fn read_by_id(
 	pool: Data<PgPool>
 ) -> Result<HttpResponse> {
 	let id = parameters.id.ok_or(Error::ParameterMissing)?;
-	let response = get_by_id(&id, &pool).await?;
+	let thing = things::get_by_id(&id, &pool).await?;
 
-	Ok(HttpResponse::Ok().json(response))
+	Ok(HttpResponse::Ok().json(thing))
 }
 
 /// Update a Thing instance
@@ -163,10 +149,23 @@ pub async fn read_by_id(
 /// Find a Thing by {thing_id}, update and return instance
 ///
 #[tracing::instrument(name = "Update things")]
-// #[put("{thing_id}")]
-pub async fn update() -> impl Responder {
-	HttpResponse::Ok()
-		.body("Find a Thing by {thing_id}, update and return instance...")
+pub async fn update_by_id(
+	parameters: web::Query<ThingsParameters>,
+	form: Form<ThingFormData>,
+	pool: Data<PgPool>
+) -> Result<HttpResponse>  {
+	let uuid = parameters.id.ok_or(Error::ParameterMissing)?;
+	let name = ThingName::parse(&form.name)?;
+	let description = ThingDescription::parse(&form.description)?;
+
+	let thing = ThingBuilder::new(name)
+		.id(uuid)
+		.description(description)
+		.build()?;
+
+	let updated_thing = things::update(&thing, &pool).await?;
+
+	Ok(HttpResponse::Ok().json(updated_thing))
 }
 
 /// Delete a Thing by thing_id
@@ -174,10 +173,14 @@ pub async fn update() -> impl Responder {
 /// Find a Thing by {thing_id}, update and return confirmation
 ///
 #[tracing::instrument(name = "Delete things")]
-// #[delete{"{thing_id}"}]
-pub async fn delete_by_id() -> impl Responder {
-	HttpResponse::Ok()
-		.body("Find a Thing by {thing_id}, update and return confirmation...")
+pub async fn delete_by_id(
+	parameters: web::Query<ThingsParameters>,
+	pool: Data<PgPool>
+) -> Result<HttpResponse> {
+	let id = parameters.id.ok_or(Error::ParameterMissing)?;
+	let number_of_things_deleted = things::delete_by_id(&id, &pool).await?;
+
+	Ok(HttpResponse::Ok().json(number_of_things_deleted))
 }
 
 #[cfg(test)]
@@ -204,15 +207,13 @@ pub mod tests {
 		let query_name = name.clone(); // TODO: This is clone ugly
 		let description: String = Sentence(3..7).fake();
 		let query_description = description.clone(); // TODO: This clone is ugly
-
-		let thing = ThingFormData { name, description };
-
-		let form = Form(thing);
-		
+		let form = Form(
+			ThingFormData { name, description }
+		);
 		let pool = Data::new(database.clone());
 
 		//-- Execute Function (Act)
-		let response = create(form, pool).await;
+		let response = create(form, pool).await?;
 		// println!("{response:#?}");
 
 		//-- Checks (Assertions)
@@ -279,7 +280,7 @@ pub mod tests {
 		// Wrap database around Actix Data type
 		let pool = Data::new(database.clone());
 		// Gat HTTP response
-		let response = read_index(web_parameters, pool).await;
+		let response = read_index(web_parameters, pool).await?;
 		// println!("{response:#?}");
 		// Unwrap response to get HTTP Response body
 		let body = response.into_body().try_into_bytes().unwrap();
@@ -387,6 +388,102 @@ pub mod tests {
 
 		//-- Checks (Assertions)
 		assert!(matches!(record, crate::error::Error::ParameterMissing));
+
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn update_thing_by_id(database: sqlx::Pool<sqlx::Postgres>) -> Result<()> {
+		//-- Setup and Fixtures (Arrange)
+		// Create a test Thing instance
+		let test_thing = create_random_test_thing().await?;
+		// Add Thing to database
+		insert(&test_thing, &database).await?;
+
+		//-- Execute Function (Act)
+		// Build web parameters
+		let parameters = web::Query( ThingsParameters {
+			id: Some(test_thing.id),
+			limit: None,
+			offset: None
+		});
+		// Build web form
+		let updated_name: String = Word().fake();
+		let updated_description: String = Sentence(3..7).fake();
+		let form = Form(
+			ThingFormData {
+				name: updated_name.clone(),
+				description: updated_description.clone(),
+			}
+		);
+		// Build database pool
+		let pool = Data::new(database.clone());
+		// Update Thing
+		let response = update_by_id(parameters, form, pool).await?;
+
+		//-- Checks (Assertions)
+		// Check http response is success
+		assert!(response.status().is_success());
+		// Check http status is ok (200)
+		assert_eq!(200, response.status().as_u16());
+		// Unwrap response to get HTTP Response body
+		let body = response.into_body().try_into_bytes().unwrap();
+		// pin!(body);
+		// Serialise bytes into Thing
+		let response_thing: Thing = serde_json::from_slice(&body).unwrap();
+
+		assert_eq!(response_thing.id, test_thing.id);
+		assert_eq!(
+			response_thing.name,
+			ThingName::parse(updated_name)?
+		);
+		assert_eq!(
+			response_thing.description,
+			Some(ThingDescription::parse(updated_description)?)
+		);
+		assert_eq!(
+			test_thing.created_at.timestamp_millis(),
+			response_thing.created_at.timestamp_millis()
+		);
+		assert_ne!(
+			test_thing.updated_at.timestamp_millis(),
+			response_thing.updated_at.timestamp_millis()
+		);
+
+		Ok(())
+	}
+
+	#[sqlx::test]
+	async fn delete_thing_by_id(database: sqlx::Pool<sqlx::Postgres>) -> Result<()> {
+		//-- Setup and Fixtures (Arrange)
+		// Create a test Thing instance
+		let test_thing = create_random_test_thing().await?;
+		// Add Thing to database
+		insert(&test_thing, &database).await?;
+
+		//-- Execute Function (Act)
+		// Build web parameters
+		let parameters = web::Query( ThingsParameters {
+			id: Some(test_thing.id),
+			limit: None,
+			offset: None
+		});
+		// Build database pool
+		let pool = Data::new(database.clone());
+		// Update Thing
+		let response = delete_by_id(parameters, pool).await?;
+
+		//-- Checks (Assertions)
+		// Check http response is success
+		assert!(response.status().is_success());
+		// Check http status is ok (200)
+		assert_eq!(200, response.status().as_u16());
+		// Unwrap response to get HTTP Response body
+		let body = response.into_body().try_into_bytes().unwrap();
+		// Check 1 thing was deleted
+		// Serialise bytes into Thing
+		let number_deleted: u64 = serde_json::from_slice(&body).unwrap();
+		assert_eq!(number_deleted, 1);
 
 		Ok(())
 	}

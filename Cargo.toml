@@ -65,6 +65,7 @@ tracing-subscriber = { version = "0.3", features = [
 unicode-segmentation = "1.11.0"
 uuid = { version = "1", features = ["v4", "v7", "serde"] }
 wiremock = "0.6.0"
+form_urlencoded = "1.2.1"
 
 [dev-dependencies]
 actix-rt = "2"
@@ -72,3 +73,4 @@ claim = "0.5.0"
 fake = { version = "2.9.2", features = ["derive", "chrono-tz", "uuid", "chrono"] }
 once_cell = "1.19.0"
 reqwest = "0.12.1"
+url = "2"

@@ -19,13 +19,13 @@ use actix_web::web;
 pub fn things(config: &mut web::ServiceConfig) {
     config
         // .service(things::index)
-        .route("/", web::get().to(things::read_index))
+        .route("", web::get().to(things::read_index))
         // .service(things::create)
-        .route("/", web::post().to(things::create))
+        .route("", web::post().to(things::create))
         // .service(things::read)
-        .route("/{thing_id}", web::get().to(things::read_by_id))
+        .route("{thing_id}", web::get().to(things::read_by_id))
         // .service(things::update)
-        .route("/", web::put().to(things::update))
+        .route("{thing_id}", web::put().to(things::update_by_id))
         // .service(things::delete);
-        .route("/{thing_id}", web::delete().to(things::delete_by_id));
+        .route("{thing_id}", web::delete().to(things::delete_by_id));
 }
