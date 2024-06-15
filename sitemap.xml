@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://ianteda.github.io/personal_ledger_server/</loc>
+         <lastmod>2024-06-15</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://ianteda.github.io/personal_ledger_server/api_specification/</loc>
+         <lastmod>2024-06-15</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://ianteda.github.io/personal_ledger_server/database_design/</loc>
+         <lastmod>2024-06-15</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://ianteda.github.io/personal_ledger_server/getting_started/</loc>
+         <lastmod>2024-06-15</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+</urlset>
